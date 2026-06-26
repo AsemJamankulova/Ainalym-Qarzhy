@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ainalym Qarzhy — CRM</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Стили для экрана входа как на скриншоте image_4.png */
+        .auth-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #f8fafc;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999;
+            font-family: sans-serif;
+        }
+        .auth-title {
+            color: #3b82f6; font-size: 28px; font-weight: bold;
+            margin-bottom: 25px; letter-spacing: 0.5px;
+        }
+        .auth-card {
+            background: #ffffff; padding: 30px 25px;
+            border-radius: 12px; width: 100%; max-width: 340px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+        .auth-card h3 {
+            margin-top: 0; margin-bottom: 20px;
+            font-size: 20px; color: #1e293b; font-weight: 500;
+        }
+        .auth-input {
+            width: 100%; padding: 12px; margin-bottom: 15px;
+            border: 1px solid #cbd5e1; border-radius: 8px;
+            font-size: 15px; box-sizing: border-box; outline: none;
+        }
+        .auth-input:focus { border-color: #3b82f6; }
+        .auth-btn {
+            width: 100%; padding: 12px; background: #1e75ff;
+            color: white; border: none; border-radius: 8px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .auth-btn:hover { background: #1d4ed8; }
+        .auth-error {
+            color: #dc2626; font-size: 13px; text-align: center;
+            margin-top: 10px; display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ЭКРАН ВХОДА (ОКНО АВТОРИЗАЦИИ) -->
+    <div id="auth-block" class="auth-screen">
+        <div class="auth-title">Ainalym Qarzhy</div>
+        <div class="auth-card">
+            <h3>Вход</h3>
+            <input type="text" id="auth-login" class="auth-input" placeholder="Логин">
+            <input type="password" id="auth-password" class="auth-input" placeholder="Пароль">
+            <button class="auth-btn" onclick="checkLogin()">Войти</button>
+            <div id="auth-error-msg" class="auth-error">Неверный логин или пароль</div>
+        </div>
+    </div>
+
+    <!-- ОСНОВНОЙ ИНТЕРФЕЙС CRM -->
+    <div id="crm-main-interface" style="display: none;">
+        <!-- Шапка -->
+        <header class="top-bar">
+            <div class="left-section">
+                <button class="menu-toggle-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <span class="system-title">Ainalym Qarzhy</span>
+            </div>
+            <div class="user-profile" style="display: flex; align-items: center; gap: 10px;">
+                <span id="current-user-display" style="font-size: 14px; font-weight: bold; color: #475569;"></span>
+                <button onclick="handleLogout()" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 14px;" title="Выйти"><i class="fas fa-sign-out-alt"></i> Изменить пользователя</button>
+            </div>
+        </header>
+
+        <div class="main-wrapper">
+            <!-- Меню -->
+            <aside class="sidebar" id="sidebar">
+                <nav class="menu">
+                    <div class="menu-item" onclick="navigateToPage('calculator')">
+                        <i class="fas fa-calculator"></i> <span>Калькулятор</span>
+                    </div>
+                    <div class="menu-category">
+                        <div class="category-title" onclick="toggleSubmenu('clients-sub')">
+                            <i class="fas fa-users"></i> <span>Клиенты</span> <i class="fas fa-chevron-down arrow"></i>
+                        </div>
+                        <div class="submenu open" id="clients-sub">
+                            <div class="submenu-item" onclick="navigateToPage('client-list')">Список клиентов</div>
+                            <div class="submenu-item" onclick="navigateToPage('client-reg')">Регистрация</div>
+                        </div>
+                    </div>
+                    <div class="menu-category">
+                        <div class="category-title" onclick="toggleSubmenu('reports-sub')">
+                            <i class="fas fa-chart-bar"></i> <span>Отчеты</span> <i class="fas fa-chevron-down arrow"></i>
+                        </div>
+                        <div class="submenu open" id="reports-sub">
+                            <div class="submenu-item" onclick="navigateToPage('daily-report')">Ежедневная касса (Сверка)</div>
+                            <div class="submenu-item" onclick="navigateToPage('monthly-report')">Общий итог</div>
+                        </div>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- Контент -->
+            <main class="content-area">
+                
+                <!-- КАЛЬКУЛЯТОР -->
+                <section id="page-calculator" class="page-section">
+                    <div class="card">
+                        <h2>Быстрый калькулятор платежей</h2>
+                        <div class="form-group">
+                            <label>Сумма займа (₸):</label>
+                            <input type="number" id="loanAmount" value="1000000">
+                        </div>
+                        <div class="form-group">
+                            <label>Срок займа:</label>
+                            <select id="durationDays">
+                                <option value="31">31 день (15%)</option>
+                                <option value="14">14 дней (7.5%)</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="calculateSchedule()">Рассчитать график</button>
+                        <div id="reportSummary" class="summary-box" style="display:none;"></div>
+                        <div id="scheduleResult"></div>
+                    </div>
+                </section>
+
+                <!-- РЕГИСТРАЦИЯ КЛИЕНТА -->
+                <section id="page-client-reg" class="page-section">
+                    <div class="card">
+                        <h2>Регистрация нового заёмщика</h2>
+                        <div class="form-grid-two-cols">
+                            <div class="form-group">
+                                <label>ИИН клиента:</label>
+                                <input type="text" id="regIin" placeholder="Введите 12 цифр ИИН" maxlength="12">
+                            </div>
+                            <div class="form-group">
+                                <label>ФИО полностью:</label>
+                                <input type="text" id="regName" placeholder="Иванов Иван Иванович">
+                            </div>
+                            <div class="form-group">
+                                <label>Номер телефона:</label>
+                                <input type="text" id="regPhone" placeholder="+7 (707) 000-00-00">
+                            </div>
+                            <div class="form-group">
+                                <label>ТЦ / Бутик / Адрес:</label>
+                                <input type="text" id="regAddress" placeholder="Жетысай, бутик 45">
+                            </div>
+                            <div class="form-group">
+                                <label>Дата выдачи займа:</label>
+                                <input type="date" id="regDate">
+                            </div>
+                            <div class="form-group">
+                                <label>Сумма выдачи (₸):</label>
+                                <input type="number" id="regAmount" value="500000">
+                            </div>
+                            <div class="form-group">
+                                <label>Срок договора:</label>
+                                <select id="regDuration">
+                                    <option value="31">31 день (15% вознаграждение)</option>
+                                    <option value="14">14 дней (7.5% вознаграждение)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn-primary" style="background-color: #16a34a; margin-top: 15px;" onclick="registerClient()">
+                            <i class="fas fa-user-plus"></i> Выдать займ и зарегистрировать
+                        </button>
+                    </div>
+                </section>
+
+                <!-- СПИСОК КЛИЕНТОВ -->
+                <section id="page-client-list" class="page-section active">
+                    <div class="card">
+                        <div class="card-header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                            <h2>Список клиентов</h2>
+                            <div>
+                                <label style="margin-right: 5px; font-weight: bold;">Статус займов:</label>
+                                <select id="statusFilter" onchange="renderTables()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                                    <option value="Все">Все</option>
+                                    <option value="Активный" selected>Активные</option>
+                                    <option value="Закрыт">Неактивные / Закрытые</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>№</th>
+                                        <th>Дата выдачи</th>
+                                        <th>Полное имя</th>
+                                        <th>Срок</th>
+                                        <th>Сумма</th>
+                                        <th>К возврату</th>
+                                        <th>Статус</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clients-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ПРОФИЛЬ КЛИЕНТА -->
+                <section id="page-client-profile" class="page-section">
+                    <button class="btn-primary" style="background-color: #475569; margin-bottom: 15px;" onclick="navigateToPage('client-list')">
+                        <i class="fas fa-arrow-left"></i> Назад к списку
+                    </button>
+                    
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <h2 id="profName">Профиль клиента</h2>
+                            <button class="btn-primary" style="background-color: #dc2626;" onclick="deleteCurrentClient()">
+                                <i class="fas fa-trash-alt"></i> Удалить этот займ
+                            </button>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 6px;">
+                            <div><b>ИИН:</b> <span id="profIin">-</span></div>
+                            <div><b>Телефон:</b> <span id="profPhone">-</span></div>
+                            <div><b>Адрес/ТЦ:</b> <span id="profAddress">-</span></div>
+                            <div><b>Дата выдачи:</b> <span id="profDate">-</span></div>
+                            <div><b>Сумма займа:</b> <span id="profAmount">-</span></div>
+                            <div><b>Всего к возврату:</b> <span id="profTotalReturn">-</span></div>
+                            <div><b>Остаток долга:</b> <span id="profRemaining">-</span></div>
+                        </div>
+
+                        <!-- Форма быстрой повторной выдачи займов -->
+                        <div style="background: #f0fdf4; border: 1px dashed #16a34a; padding: 15px; border-radius: 6px; margin-bottom: 25px;">
+                            <h4 style="color: #15803d; margin-bottom: 10px;"><i class="fas fa-redo"></i> Выдать повторный займ</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                                <div>
+                                    <label style="font-size: 12px;">Дата выдачи:</label>
+                                    <input type="date" id="reLoanDate" style="width:100%; padding:4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px;">Сумма повторно (₸):</label>
+                                    <input type="number" id="reLoanAmount" value="500000" style="width:100%; padding:4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px;">Срок договора:</label>
+                                    <select id="reLoanDuration" style="width:100%; padding:4px;">
+                                        <option value="31">31 день (15%)</option>
+                                        <option value="14">14 дней (7.5%)</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: flex-end;">
+                                    <button class="btn-primary" style="background-color: #16a34a; width: 100%; padding: 6px;" onclick="issueRepeatLoan()">Открыть новый займ</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3>Календарь платежей</h3>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>День</th>
+                                        <th>Дата платежа</th>
+                                        <th>Сумма платежа</th>
+                                        <th>Внутренний делёж</th>
+                                        <th>Статус</th>
+                                        <th>Действие</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="profile-schedule-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- СВЕРКА КАССЫ ЗА ДЕНЬ -->
+                <section id="page-daily-report" class="page-section">
+                    <div class="card">
+                        <h2>Ежедневная касса — Сверка с Excel</h2>
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                            <div>
+                                <label style="font-weight: bold; margin-right: 10px;">Выберите дату для сверки:</label>
+                                <input type="date" id="dailyReportDate" onchange="renderDailyReport()" style="padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px;">
+                                <div style="color: #64748b; font-size: 13px; font-weight: bold;">ОЖИДАЕМАЯ ОПЛАТА ПО БАЗЕ:</div>
+                                <div id="daily-expected-sum" style="color: #2563eb; font-size: 22px; font-weight: bold; margin-top: 5px;">₸ 0</div>
+                            </div>
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px;">
+                                <div style="color: #166534; font-size: 13px; font-weight: bold;">ФАКТИЧЕСКИ СОБРАНО (КАССА):</div>
+                                <div id="daily-collected-sum" style="color: #16a34a; font-size: 22px; font-weight: bold; margin-top: 5px;">₸ 0</div>
+                            </div>
+                            <div id="status-match-box" style="background: #fee2e2; border: 1px solid #fca5a5; padding: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #991b1b;">
+                                Касса еще не сошлась
+                            </div>
+                        </div>
+
+                        <h3>Список ожидавшихся платежей на этот день</h3>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>№</th>
+                                        <th>ФИО Клиента</th>
+                                        <th>Телефон</th>
+                                        <th>ТЦ / Адрес</th>
+                                        <th>Сумма дня</th>
+                                        <th>Номер дня</th>
+                                        <th>Статус оплат в CRM</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="daily-report-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ОБЩИЙ ИТОГ -->
+                <section id="page-monthly-report" class="page-section">
+                    <div class="card">
+                        <h2>Финансовый отчет (Общий итог) — Ainalym Qarzhy</h2>
+                        <div class="metrics-grid">
+                            <div class="metric-card blue">
+                                <div class="metric-title">Общая сумма выдач</div>
+                                <div class="metric-value" id="report-total-issued">₸ 0</div>
+                            </div>
+                            <div class="metric-card green">
+                                <div class="metric-title">Фактически собрано кассы</div>
+                                <div class="metric-value" id="report-total-collected">₸ 0</div>
+                            </div>
+                            <div class="metric-card gold">
+                                <div class="metric-title">Чистая прибыль</div>
+                                <div class="metric-value" id="report-total-profit">₸ 0</div>
+                            </div>
+                        </div>
+                        <h3 style="margin-top: 30px; margin-bottom: 15px;">Детализация по клиентам</h3>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ФИО Клиента</th>
+                                        <th>Выдано (Тело)</th>
+                                        <th>Собрано платежей</th>
+                                        <th>Ушло на Тело</th>
+                                        <th>Ушло в Прибыль</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
