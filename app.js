@@ -337,11 +337,20 @@ function renderDailyReport() {
     clientsDatabase.forEach(client => {
         generateClientSchedule(client);
         client.payments.forEach(payment => {
-           if (payment.isoDate === reportDateInput && !payment.isPaid) {
-                totalExpectedSum += payment.amount;
-                if (payment.isPaid) totalCollectedSum += payment.amount;
-                tbody.innerHTML += `<tr style="${payment.isPaid ? 'background-color: #f0fdf4;' : ''}"><td>${counter++}</td><td><b>${client.name}</b></td><td>${client.phone}</td><td>${client.address}</td><td><b>₸ ${payment.amount.toLocaleString()}</b></td><td><span class="badge">День ${payment.dayNumber}</span></td><td>${payment.isPaid ? '<span class="badge" style="background:#dcfce7; color:#15803d;">Внесено в кассу</span>' : '<span class="badge" style="background:#fee2e2; color:#991b1b;">Еще не платил</span>'}</td></tr>`;
-            }
+          if (payment.isoDate === reportDateInput) {
+                    totalExpectedSum += payment.amount;
+                    if (payment.isPaid) totalCollectedSum += payment.amount;
+                    
+                    tbody.innerHTML += `<tr style="${payment.isPaid ? 'background-color: #f0fdf4;' : ''}">
+                        <td>${counter++}</td>
+                        <td>${client.name}</td>
+                        <td>${client.phone}</td>
+                        <td>${client.address}</td>
+                        <td>₸ ${payment.amount.toLocaleString()}</td>
+                        <td>${payment.dayNumber}</td>
+                        <td>${payment.isPaid ? '✅ Оплачено' : '❌ Ожидает'}</td>
+                    </tr>`;
+                }
         });
     });
 
