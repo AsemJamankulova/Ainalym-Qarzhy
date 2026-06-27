@@ -186,6 +186,12 @@
                                     <option value="Закрыт">Неактивные / Закрытые</option>
                                 </select>
                             </div>
+                            <!-- Добавь этот блок внутрь card-header-flex -->
+<div style="display: flex; gap: 10px;">
+    <button onclick="downloadDatabase()" class="btn-primary" style="background-color: #059669; padding: 6px 12px;">💾 Сохранить БД</button>
+    <input type="file" id="importFile" onchange="uploadDatabase(event)" style="display: none;">
+    <button onclick="document.getElementById('importFile').click()" class="btn-primary" style="background-color: #2563eb; padding: 6px 12px;">📂 Загрузить БД</button>
+</div>
                         </div>
                         <div class="table-responsive">
                             <table>
