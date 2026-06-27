@@ -433,3 +433,28 @@ document.addEventListener("DOMContentLoaded", function() {
     setCurrentDate();
     checkCurrentSession(); 
 });
+
+// Функция для скачивания базы в JSON файл
+function downloadDatabase() {
+    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clientsDatabase));
+    let downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "crm_database.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+// Функция для загрузки базы из файла
+function uploadDatabase(event) {
+    let file = event.target.files[0];
+    if (!file) return;
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        clientsDatabase = JSON.parse(e.target.result);
+        saveToLocalStorage();
+        alert("База данных успешно загружена!");
+        location.reload();
+    };
+    reader.readAsText(file);
+}
