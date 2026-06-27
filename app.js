@@ -85,8 +85,18 @@ function handleRouting() {
 }
 
 // ==========================================
-// 5. УПРАВЛЕНИЕ КЛИЕНТАМИ И ЗАЙМАМИ (ИСПРАВЛЕННОЕ)
+// 5. УПРАВЛЕНИЕ КЛИЕНТАМИ И ЗАЙМАМИ
 // ==========================================
+
+function deleteCurrentClient() {
+    if (confirm("Вы уверены, что хотите полностью удалить этот займ?")) {
+        clientsDatabase = clientsDatabase.filter(c => c.id !== activeProfileClientId);
+        saveToLocalStorage();
+        alert("Займ успешно удален!");
+        navigateToPage('client-list');
+    }
+}
+
 function generateClientSchedule(client) {
     if (client.payments && client.payments.length > 0) return;
 
@@ -184,7 +194,6 @@ function registerClient() {
     navigateToPage('client-list');
 }
 
-// [ОСТАЛЬНЫЕ ФУНКЦИИ БЕЗ ИЗМЕНЕНИЙ]
 function issueRepeatLoan() {
     let currentClient = clientsDatabase.find(c => c.id === activeProfileClientId);
     let reDateInput = document.getElementById('reLoanDate').value;
@@ -380,7 +389,6 @@ function calculateSchedule() {
     let workingDays = [];
     let currentCheckDate = new Date(startDate);
     
-    // Аналогичная логика для калькулятора
     let dayOfWeek = startDate.getDay();
     let isWeekendIssue = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
     let totalWorkingDays = isWeekendIssue ? 26 : 27;
