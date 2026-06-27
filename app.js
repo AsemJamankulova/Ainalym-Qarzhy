@@ -1,5 +1,6 @@
+
 // ==========================================
-// 1. БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ CRM (НА 5 ЧЕЛОВЕК)
+// 1. БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ CRM
 // ==========================================
 const allowedUsers = {
     "saule": "12345",
@@ -10,7 +11,7 @@ const allowedUsers = {
 };
 
 // ==========================================
-// 2. БЛОК АВТОРИЗАЦИИ И СЕССИЙ (Ainalym Qarzhy)
+// 2. БЛОК АВТОРИЗАЦИИ И СЕССИЙ
 // ==========================================
 function checkCurrentSession() {
     let loggedUser = localStorage.getItem("ainalym_qarzhy_user");
@@ -47,7 +48,7 @@ function handleLogout() {
 }
 
 // ==========================================
-// 3. БАЗА ДАННЫХ КЛИЕНТОВ (С АВТОСОХРАНЕНИЕМ)
+// 3. БАЗА ДАННЫХ КЛИЕНТОВ
 // ==========================================
 let clientsDatabase = JSON.parse(localStorage.getItem("ainalym_clients_list")) || [];
 let activeProfileClientId = null;
@@ -57,7 +58,7 @@ function saveToLocalStorage() {
 }
 
 // ==========================================
-// 4. НАВИГАЦИЯ И ИНТЕРФЕЙС (РОУТИНГ)
+// 4. НАВИГАЦИЯ И ИНТЕРФЕЙС
 // ==========================================
 function navigateToPage(pageId, clientId = null) {
     if (pageId === 'client-profile' && clientId) {
@@ -104,7 +105,7 @@ function generateClientSchedule(client) {
     let startDate = new Date(parts[2], parts[1] - 1, parts[0]);
     let dayOfWeek = startDate.getDay(); 
 
-    // Логика: Пт(5), Сб(6), Вс(0) = 26 дней. Вт(2), Ср(3), Чт(4) = 27 дней.
+    // Новая логика: 26 или 27 дней
     let isWeekendIssue = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
     let totalWorkingDays = isWeekendIssue ? 26 : 27;
 
@@ -113,7 +114,6 @@ function generateClientSchedule(client) {
 
     while (workingDays.length < totalWorkingDays) {
         currentCheckDate.setDate(currentCheckDate.getDate() + 1); 
-        // Понедельник (1) не считается
         if (currentCheckDate.getDay() !== 1) { 
             workingDays.push(new Date(currentCheckDate)); 
         }
