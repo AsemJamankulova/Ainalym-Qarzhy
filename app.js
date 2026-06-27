@@ -1,4 +1,3 @@
-
 // ==========================================
 // 1. БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ CRM
 // ==========================================
@@ -105,15 +104,22 @@ function generateClientSchedule(client) {
     let startDate = new Date(parts[2], parts[1] - 1, parts[0]);
     let dayOfWeek = startDate.getDay(); 
 
-    // Новая логика: 26 или 27 дней
-    let isWeekendIssue = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
-    let totalWorkingDays = isWeekendIssue ? 26 : 27;
+    // НОВАЯ ЛОГИКА:
+    // 14 дней -> всегда 12 рабочих дней
+    // 31 день -> Вт, Ср, Чт (2,3,4) = 27 дней; Пт, Сб, Вс (5,6,0) = 26 дней
+    let totalWorkingDays;
+    if (parseInt(client.duration) === 14) {
+        totalWorkingDays = 12;
+    } else {
+        totalWorkingDays = (dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4) ? 27 : 26;
+    }
 
     let workingDays = [];
     let currentCheckDate = new Date(startDate);
 
     while (workingDays.length < totalWorkingDays) {
         currentCheckDate.setDate(currentCheckDate.getDate() + 1); 
+        // Понедельник (1) всегда пропускаем
         if (currentCheckDate.getDay() !== 1) { 
             workingDays.push(new Date(currentCheckDate)); 
         }
@@ -386,13 +392,19 @@ function calculateSchedule() {
     let percentRate = (durationDays === 14) ? 0.075 : 0.15;
     let totalReturn = loanAmount + (loanAmount * percentRate);
     let startDate = new Date();
+    
+    // Применяем ту же логику для калькулятора
+    let dayOfWeek = startDate.getDay();
+    let totalWorkingDays;
+    if (durationDays === 14) {
+        totalWorkingDays = 12;
+    } else {
+        totalWorkingDays = (dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4) ? 27 : 26;
+    }
+
     let workingDays = [];
     let currentCheckDate = new Date(startDate);
     
-    let dayOfWeek = startDate.getDay();
-    let isWeekendIssue = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
-    let totalWorkingDays = isWeekendIssue ? 26 : 27;
-
     while (workingDays.length < totalWorkingDays) {
         currentCheckDate.setDate(currentCheckDate.getDate() + 1);
         if (currentCheckDate.getDay() !== 1) { workingDays.push(new Date(currentCheckDate)); }
@@ -402,11 +414,9 @@ function calculateSchedule() {
     let lastPayment = totalReturn - (dailyPayment * (totalWorkingDays - 1));
     let scheduleHTML = `<h3>Внутреннее разделение по дням</h3>`;
     let remainingPrincipal = loanAmount;
+    
     for (let dayNumber = 1; dayNumber <= totalWorkingDays; dayNumber++) {
         let currentPayment = (dayNumber === totalWorkingDays) ? lastPayment : dailyPayment;
-        let principalPortion = currentPayment <= remainingPrincipal ? currentPayment : remainingPrincipal;
-        let profitPortion = currentPayment - principalPortion;
-        remainingPrincipal -= principalPortion;
         scheduleHTML += `<div class="day-row"><span><b>День ${dayNumber}</b> (${workingDays[dayNumber-1].toLocaleDateString('ru-RU')})</span><span>Платёж: <b>${currentPayment.toLocaleString()} ₸</b></span></div>`;
     }
     document.getElementById('scheduleResult').innerHTML = scheduleHTML;
