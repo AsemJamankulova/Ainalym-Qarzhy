@@ -38,13 +38,21 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Система запущена");
 });
 
-window.registerClient = registerClient;
-window.calculateSchedule = calculateSchedule;
-window.navigateToPage = navigateToPage;
+// --- В САМЫЙ КОНЕЦ ФАЙЛА app.js ---
 window.checkLogin = checkLogin;
 window.handleLogout = handleLogout;
-window.makePayment = makePayment;
+window.navigateToPage = navigateToPage;
+window.toggleSidebar = toggleSidebar; // Если она у тебя есть
+window.toggleSubmenu = toggleSubmenu; // Если она у тебя есть
+window.registerClient = registerClient;
 window.deleteCurrentClient = deleteCurrentClient;
-window.recalculateMultiPayment = recalculateMultiPayment;
+window.issueRepeatLoan = issueRepeatLoan;
 window.makeMultiPayment = makeMultiPayment;
+window.recalculateMultiPayment = recalculateMultiPayment;
+window.makePayment = makePayment;
 window.cancelPayment = cancelPayment;
+window.calculateSchedule = calculateSchedule;
+window.renderDailyReport = renderDailyReport;
+window.renderTables = renderTables;
+window.uploadDatabase = uploadDatabase;
+window.downloadDatabase = downloadDatabase;
