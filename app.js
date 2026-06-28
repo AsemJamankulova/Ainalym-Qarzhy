@@ -15,6 +15,16 @@ const db = getFirestore(app);
 
 window.clientsDatabase = [];
 
+// ==========================================
+// 1. БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ CRM
+// ==========================================
+const allowedUsers = {
+    "saule": "12345",
+    "sadvakask": "050910",
+    "user3": "7777",
+    "user4": "8888",
+    "user5": "9999"
+};
 // Функция загрузки данных
 async function loadData() {
     try {
