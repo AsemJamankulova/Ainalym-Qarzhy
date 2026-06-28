@@ -106,3 +106,16 @@ document.addEventListener("DOMContentLoaded", async function() {
     
     checkCurrentSession();
 });
+// Делаем функции доступными для HTML-кнопок
+window.checkLogin = checkLogin;
+window.handleLogout = handleLogout;
+window.navigateToPage = navigateToPage;
+window.deleteCurrentClient = deleteCurrentClient;
+window.registerClient = registerClient;
+window.issueRepeatLoan = issueRepeatLoan;
+window.makeMultiPayment = makeMultiPayment;
+window.makePayment = makePayment;
+window.cancelPayment = cancelPayment;
+window.recalculateMultiPayment = recalculateMultiPayment;
+window.uploadDatabase = uploadDatabase;
+window.downloadDatabase = downloadDatabase;
