@@ -93,8 +93,7 @@ function registerClient() {
 function renderTables() {
     const body = document.getElementById('clients-table-body');
     if (!body) return;
-    body.innerHTML = clientsDatabase.map((c, i) => `<tr><td>${i+1}</td><td>${c.name}</td><td>₸ ${c.amount}</td><td><button onclick="navigateToPage('client-profile', ${c.id})">Открыть</button></td></tr>`).join('');
-}
+   body.innerHTML = clientsDatabase.map((c, i) => `<tr><td>${i+1}</td><td>${c.name}</td><td>₸ ${c.amount}</td><td><button onclick="window.navigateToPage('client-profile', ${c.id})">Открыть</button></td></tr>`).join('');
 
 function calculateSchedule() {
     let amount = parseInt(document.getElementById('loanAmount').value);
