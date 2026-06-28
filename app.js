@@ -37,3 +37,14 @@ document.addEventListener("DOMContentLoaded", () => {
     loadData();
     console.log("Система запущена");
 });
+
+window.registerClient = registerClient;
+window.calculateSchedule = calculateSchedule;
+window.navigateToPage = navigateToPage;
+window.checkLogin = checkLogin;
+window.handleLogout = handleLogout;
+window.makePayment = makePayment;
+window.deleteCurrentClient = deleteCurrentClient;
+window.recalculateMultiPayment = recalculateMultiPayment;
+window.makeMultiPayment = makeMultiPayment;
+window.cancelPayment = cancelPayment;
