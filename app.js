@@ -1,454 +1,1368 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-import { getFirestore, collection, getDocs, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAkqiJvINU1lUKlyzVkcTTAYyZm2rIB3tU",
-  authDomain: "ainalym-qarzhy.firebaseapp.com",
-  projectId: "ainalym-qarzhy",
-  storageBucket: "ainalym-qarzhy.appspot.com",
-  messagingSenderId: "575286319270",
-  appId: "1:575286319270:web:b1565b7622ee028043bc67"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Теперь функции сохранения и загрузки будут работать с db вместо LocalStorage
 // ==========================================
 // 1. БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ CRM
 // ==========================================
 const allowedUsers = {
-    "saule": "12345",
-    "sadvakask": "050910",
-    "user3": "7777",
-    "user4": "8888",
-    "user5": "9999"
+    "saule": {
+        password: "12345",
+        role: "admin"
+    },
+
+    "sadvakask": {
+        password: "050910",
+        role: "manager"
+    },
+
+    "user3": {
+        password: "7777",
+        role: "cashier"
+    },
+
+    "user4": {
+        password: "8888",
+        role: "cashier"
+    },
+
+    "user5": {
+        password: "9999",
+        role: "cashier"
+    }
 };
+
+// ==========================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ==========================================
+let currentUser = null;
+let currentRole = null;
 
 // ==========================================
 // 2. БЛОК АВТОРИЗАЦИИ И СЕССИЙ
 // ==========================================
 function checkCurrentSession() {
+
     let loggedUser = localStorage.getItem("ainalym_qarzhy_user");
+
     if (loggedUser && allowedUsers[loggedUser]) {
+
+        // Загружаем пользователя и роль
+        currentUser = loggedUser;
+        currentRole = allowedUsers[loggedUser].role;
+
+        // Обновляем localStorage
+        localStorage.setItem("ainalym_qarzhy_user", currentUser);
+        localStorage.setItem("ainalym_qarzhy_role", currentRole);
+
         document.getElementById("auth-block").style.display = "none";
         document.getElementById("crm-main-interface").style.display = "block";
-        document.getElementById("current-user-display").innerText = "Пользователь: " + loggedUser;
-        handleRouting(); 
+        document.getElementById("current-user-display").innerText =
+            "Пользователь: " + currentUser;
+
+        handleRouting();
+
     } else {
+
+        currentUser = null;
+        currentRole = null;
+
         document.getElementById("auth-block").style.display = "flex";
         document.getElementById("crm-main-interface").style.display = "none";
+
     }
 }
 
 function checkLogin() {
-    let loginInp = document.getElementById("auth-login").value.trim();
-    let passInp = document.getElementById("auth-password").value.trim();
-    let errorMsg = document.getElementById("auth-error-msg");
 
-    if (allowedUsers[loginInp] && allowedUsers[loginInp] === passInp) {
+    const loginInp = document.getElementById("auth-login").value.trim();
+    const passInp = document.getElementById("auth-password").value.trim();
+    const errorMsg = document.getElementById("auth-error-msg");
+
+    const user = allowedUsers[loginInp];
+
+    if (user && user.password === passInp) {
+
         errorMsg.style.display = "none";
-        localStorage.setItem("ainalym_qarzhy_user", loginInp); 
+
+        localStorage.setItem("ainalym_qarzhy_user", loginInp);
+        localStorage.setItem("ainalym_qarzhy_role", user.role);
+
+        currentUser = loginInp;
+        currentRole = user.role;
+
         document.getElementById("auth-login").value = "";
         document.getElementById("auth-password").value = "";
-        checkCurrentSession(); 
+
+        checkCurrentSession();
+
     } else {
-        errorMsg.style.display = "block"; 
+
+        errorMsg.style.display = "block";
+
     }
 }
 
 function handleLogout() {
+
     localStorage.removeItem("ainalym_qarzhy_user");
+    localStorage.removeItem("ainalym_qarzhy_role");
+
+    currentUser = null;
+    currentRole = null;
+
+    window.location.hash = "";
+
     checkCurrentSession();
 }
 
 // ==========================================
 // 3. БАЗА ДАННЫХ КЛИЕНТОВ
 // ==========================================
-let clientsDatabase = JSON.parse(localStorage.getItem("ainalym_clients_list")) || [];
+let clientsDatabase = JSON.parse(
+    localStorage.getItem("ainalym_clients_list")
+) || [];
+
 let activeProfileClientId = null;
 
 function saveToLocalStorage() {
-    localStorage.setItem("ainalym_clients_list", JSON.stringify(clientsDatabase));
+    localStorage.setItem(
+        "ainalym_clients_list",
+        JSON.stringify(clientsDatabase)
+    );
 }
 
 // ==========================================
 // 4. НАВИГАЦИЯ И ИНТЕРФЕЙС
 // ==========================================
 function navigateToPage(pageId, clientId = null) {
-    if (pageId === 'client-profile' && clientId) {
+
+    if (pageId === "client-profile" && clientId) {
         window.location.hash = `profile?id=${clientId}`;
     } else {
         window.location.hash = pageId;
     }
+
 }
 
 function handleRouting() {
-    if (!localStorage.getItem("ainalym_qarzhy_user")) return;
-    let hash = window.location.hash.replace('#', '');
-    document.querySelectorAll('.page-section').forEach(section => section.classList.remove('active'));
-    
-    if (hash.startsWith('profile?id=')) {
-        let clientId = parseInt(hash.split('=')[1]);
-        if (clientId) showClientProfilePage(clientId);
-    } else {
-        let pageId = hash || 'client-list';
-        let element = document.getElementById('page-' + pageId);
-        if (element) element.classList.add('active');
-        if (pageId === 'daily-report') renderDailyReport();
-        else renderTables();
+
+    // Если пользователь не вошёл — ничего не открываем
+    if (!currentUser) return;
+
+    const hash = window.location.hash.replace("#", "");
+
+    // Скрываем все страницы
+    document.querySelectorAll(".page-section").forEach(section => {
+        section.classList.remove("active");
+        section.style.display = "none";
+    });
+
+    // Профиль клиента
+    if (hash.startsWith("profile?id=")) {
+
+        const clientId = parseInt(hash.split("=")[1]);
+
+        if (!isNaN(clientId)) {
+            showClientProfilePage(clientId);
+        }
+
+        return;
     }
+
+    const pageId = hash || "client-list";
+
+    // Кассир не может открывать отчёты
+    if (
+        currentRole === "cashier" &&
+        (pageId === "daily-report" || pageId === "total-report")
+    ) {
+        alert("❌ У вас нет доступа к отчетам.");
+        navigateToPage("client-list");
+        return;
+    }
+
+    const element = document.getElementById("page-" + pageId);
+
+    if (!element) {
+        console.error("Не найдена страница:", pageId);
+        navigateToPage("client-list");
+        return;
+    }
+
+    element.classList.add("active");
+    element.style.display = "block";
+
+    if (pageId === "daily-report") {
+        renderDailyReport();
+    } else {
+        renderTables();
+    }
+
 }
 
 // ==========================================
 // 5. УПРАВЛЕНИЕ КЛИЕНТАМИ И ЗАЙМАМИ
 // ==========================================
-
 function deleteCurrentClient() {
-    if (confirm("Вы уверены, что хотите полностью удалить этот займ?")) {
-        clientsDatabase = clientsDatabase.filter(c => c.id !== activeProfileClientId);
-        saveToLocalStorage();
-        alert("Займ успешно удален!");
-        navigateToPage('client-list');
+
+    if (currentRole !== "admin") {
+        alert("❌ Только администратор может удалить займ!");
+        return;
     }
+
+    if (!activeProfileClientId) {
+        alert("❌ Ошибка: ID клиента не определён!");
+        return;
+    }
+
+    const client = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
+
+    if (!client) {
+        alert("❌ Клиент не найден!");
+        return;
+    }
+
+    if (!confirm("Вы уверены, что хотите полностью удалить этот займ?")) {
+        return;
+    }
+
+    // Если истории ещё нет — создаём её
+    if (!client.history) {
+        client.history = [];
+    }
+
+    client.history.push({
+        action: "delete_loan",
+        admin: currentUser,
+        date: new Date().toISOString()
+    });
+
+    clientsDatabase = clientsDatabase.filter(
+        c => c.id !== activeProfileClientId
+    );
+
+    saveToLocalStorage();
+
+    alert("✅ Займ успешно удалён.");
+
+    navigateToPage("client-list");
 }
 
 function generateClientSchedule(client) {
-    if (client.payments && client.payments.length > 0) return;
 
-    let parts = client.date.split('.');
-    let startDate = new Date(parts[2], parts[1] - 1, parts[0]);
-    let dayOfWeek = startDate.getDay(); 
-
-    // Новая логика: 26 или 27 дней
-    let isWeekendIssue = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
-    let totalWorkingDays = isWeekendIssue ? 26 : 27;
-
-    let workingDays = [];
-    let currentCheckDate = new Date(startDate);
-
-    while (workingDays.length < totalWorkingDays) {
-        currentCheckDate.setDate(currentCheckDate.getDate() + 1); 
-        if (currentCheckDate.getDay() !== 1) { 
-            workingDays.push(new Date(currentCheckDate)); 
-        }
+    // Если график уже существует — ничего не делаем
+    if (client.payments && client.payments.length > 0) {
+        return;
     }
 
-    let dailyPayment = Math.ceil((client.totalReturn / totalWorkingDays) / 100) * 100;
-    let lastPayment = client.totalReturn - (dailyPayment * (totalWorkingDays - 1));
+    // Проверяем дату
+    if (!client.date) {
+        console.error("Дата выдачи займа отсутствует.");
+        return;
+    }
+
+    const parts = client.date.split(".");
+
+    if (parts.length !== 3) {
+        console.error("Неверный формат даты.");
+        return;
+    }
+
+    const startDate = new Date(parts[2], parts[1] - 1, parts[0]);
+
+    // 14 дней = 12 оплат
+    // 31 день = 26 или 27 оплат
+
+    let totalWorkingDays = 0;
+
+    if (client.duration === 14) {
+
+        totalWorkingDays = 12;
+
+    } else {
+
+        const dayOfWeek = startDate.getDay();
+
+        const isWeekendIssue =
+            dayOfWeek === 5 ||
+            dayOfWeek === 6 ||
+            dayOfWeek === 0;
+
+        totalWorkingDays = isWeekendIssue ? 26 : 27;
+
+    }
+
+    const workingDays = [];
+    const currentDate = new Date(startDate);
+
+    while (workingDays.length < totalWorkingDays) {
+
+        currentDate.setDate(currentDate.getDate() + 1);
+
+        // Понедельник пропускаем
+        if (currentDate.getDay() !== 1) {
+            workingDays.push(new Date(currentDate));
+        }
+
+    }
+    const dailyPayment =
+        Math.ceil((client.totalReturn / totalWorkingDays) / 100) * 100;
+
+    const paidSum = dailyPayment * (totalWorkingDays - 1);
+
+    const lastPayment = client.totalReturn - paidSum;
 
     client.payments = [];
+
     let remainingPrincipal = client.amount;
 
     for (let i = 0; i < totalWorkingDays; i++) {
-        let currentPayment = (i === totalWorkingDays - 1) ? lastPayment : dailyPayment;
-        let principalPortion = 0;
-        let profitPortion = 0;
+
+        const paymentAmount =
+            i === totalWorkingDays - 1
+                ? lastPayment
+                : dailyPayment;
+
+        let principalPart = 0;
+        let profitPart = 0;
 
         if (remainingPrincipal > 0) {
-            if (currentPayment <= remainingPrincipal) {
-                principalPortion = currentPayment;
-                remainingPrincipal -= currentPayment;
+
+            if (paymentAmount <= remainingPrincipal) {
+
+                principalPart = paymentAmount;
+                remainingPrincipal -= paymentAmount;
+
             } else {
-                principalPortion = remainingPrincipal;
-                profitPortion = currentPayment - remainingPrincipal;
+
+                principalPart = remainingPrincipal;
+                profitPart = paymentAmount - remainingPrincipal;
                 remainingPrincipal = 0;
+
             }
+
         } else {
-            profitPortion = currentPayment;
+
+            profitPart = paymentAmount;
+
         }
 
         client.payments.push({
+
             dayNumber: i + 1,
-            date: workingDays[i].toLocaleDateString('ru-RU'),
-            isoDate: new Date(workingDays[i].getTime() - (workingDays[i].getTimezoneOffset() * 60000)).toISOString().split('T')[0],
-            amount: currentPayment,
-            principalPortion: principalPortion,
-            profitPortion: profitPortion,
-            isPaid: false
+
+            date: workingDays[i].toLocaleDateString("ru-RU"),
+
+            isoDate: new Date(
+                workingDays[i].getTime() -
+                workingDays[i].getTimezoneOffset() * 60000
+            ).toISOString().split("T")[0],
+
+            amount: paymentAmount,
+
+            principalPortion: principalPart,
+
+            profitPortion: profitPart,
+
+            isPaid: false,
+
+            paidAt: null,
+
+            cashier: null
+
         });
+
     }
+
 }
-
 function registerClient() {
-    let iin = document.getElementById('regIin').value.trim();
-    let name = document.getElementById('regName').value.trim();
-    let phone = document.getElementById('regPhone').value.trim();
-    let address = document.getElementById('regAddress').value.trim() || "Не указан";
-    let regDateInput = document.getElementById('regDate').value; 
-    let amount = parseInt(document.getElementById('regAmount').value);
-    let duration = parseInt(document.getElementById('regDuration').value);
 
-    if (!iin || !name || !phone || !regDateInput || isNaN(amount)) {
-        alert("Заполните все поля формы!");
+    const iin = document.getElementById("regIin").value.trim();
+    const name = document.getElementById("regName").value.trim();
+    const phone = document.getElementById("regPhone").value.trim();
+    const address = document.getElementById("regAddress").value.trim() || "Не указан";
+    const regDateInput = document.getElementById("regDate").value;
+    const amount = parseInt(document.getElementById("regAmount").value);
+    const duration = parseInt(document.getElementById("regDuration").value);
+
+    if (!iin || !name || !phone || !regDateInput || isNaN(amount) || amount <= 0) {
+        alert("❌ Заполните все поля правильно!");
         return;
     }
 
-    let parsedDate = new Date(regDateInput);
-    let formattedDate = parsedDate.toLocaleDateString('ru-RU');
-    let rate = (duration === 14) ? 0.075 : 0.15;
-    let totalReturn = amount + (amount * rate);
-    let newId = clientsDatabase.length > 0 ? clientsDatabase[clientsDatabase.length - 1].id + 1 : 101;
+    // Проверяем, нет ли клиента с таким ИИН
+    if (clientsDatabase.some(client => client.iin === iin)) {
+        alert("❌ Клиент с таким ИИН уже существует!");
+        return;
+    }
 
-    let newClient = {
-        id: newId, iin: iin, name: name, phone: phone, address: address, date: formattedDate,
-        duration: duration, amount: amount, totalReturn: totalReturn, status: "Активный", payments: []
+    const parsedDate = new Date(regDateInput);
+
+    if (isNaN(parsedDate.getTime())) {
+        alert("❌ Неверная дата!");
+        return;
+    }
+
+    const formattedDate = parsedDate.toLocaleDateString("ru-RU");
+
+    const rate = duration === 14 ? 0.075 : 0.15;
+    const totalReturn = Math.round(amount + amount * rate);
+
+    const newId =
+        clientsDatabase.length > 0
+            ? Math.max(...clientsDatabase.map(c => c.id)) + 1
+            : 101;
+
+    const newClient = {
+
+        id: newId,
+
+        iin,
+        name,
+        phone,
+        address,
+
+        date: formattedDate,
+
+        duration,
+
+        amount,
+
+        totalReturn,
+
+        status: "Активный",
+
+        issuedBy: currentUser,
+
+        issuedAt: new Date().toISOString(),
+
+        payments: [],
+
+        history: [
+            {
+                action: "loan_created",
+                user: currentUser,
+                amount: amount,
+                totalReturn: totalReturn,
+                date: new Date().toISOString()
+            }
+        ]
+
     };
 
     generateClientSchedule(newClient);
+
     clientsDatabase.push(newClient);
+
     saveToLocalStorage();
 
-    document.getElementById('regIin').value = '';
-    document.getElementById('regName').value = '';
-    document.getElementById('regPhone').value = '';
-    document.getElementById('regAddress').value = '';
+    document.getElementById("regIin").value = "";
+    document.getElementById("regName").value = "";
+    document.getElementById("regPhone").value = "";
+    document.getElementById("regAddress").value = "";
+    document.getElementById("regAmount").value = "";
+
     setCurrentDate();
 
-    alert(`Клиент успешно добавлен!`);
-    navigateToPage('client-list');
+    alert("✅ Займ успешно выдан!");
+
+    navigateToPage("client-list");
+
 }
 
 function issueRepeatLoan() {
-    let currentClient = clientsDatabase.find(c => c.id === activeProfileClientId);
-    let reDateInput = document.getElementById('reLoanDate').value;
-    let amount = parseInt(document.getElementById('reLoanAmount').value);
-    let duration = parseInt(document.getElementById('reLoanDuration').value);
 
-    if (!reDateInput || isNaN(amount) || amount <= 0) {
-        alert("Заполните дату и сумму займа!");
+    if (currentRole === "cashier") {
+        alert("❌ Кассир не может выдавать займы!");
         return;
     }
 
-    let parsedDate = new Date(reDateInput);
-    let formattedDate = parsedDate.toLocaleDateString('ru-RU');
-    let rate = (duration === 14) ? 0.075 : 0.15;
-    let totalReturn = amount + (amount * rate);
-    let newId = clientsDatabase.length > 0 ? clientsDatabase[clientsDatabase.length - 1].id + 1 : 101;
+    const currentClient = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
 
-    let repeatClient = {
-        id: newId, iin: currentClient.iin, name: currentClient.name, phone: currentClient.phone,
-        address: currentClient.address, date: formattedDate, duration: duration, amount: amount,
-        totalReturn: totalReturn, status: "Активный", payments: []
+    if (!currentClient) {
+        alert("❌ Клиент не найден!");
+        return;
+    }
+
+    const reDateInput =
+        document.getElementById("reLoanDate").value;
+
+    const amount =
+        parseInt(document.getElementById("reLoanAmount").value);
+
+    const duration =
+        parseInt(document.getElementById("reLoanDuration").value);
+
+    if (!reDateInput || isNaN(amount) || amount <= 0) {
+        alert("❌ Заполните дату и сумму!");
+        return;
+    }
+
+    const parsedDate = new Date(reDateInput);
+
+    if (isNaN(parsedDate.getTime())) {
+        alert("❌ Неверная дата!");
+        return;
+    }
+
+    const formattedDate =
+        parsedDate.toLocaleDateString("ru-RU");
+
+    const rate = duration === 14 ? 0.075 : 0.15;
+
+    const totalReturn =
+        Math.round(amount + amount * rate);
+
+    // Получаем следующий свободный ID
+    const newId =
+        clientsDatabase.length > 0
+            ? Math.max(...clientsDatabase.map(c => c.id)) + 1
+            : 101;
+
+    const repeatClient = {
+
+        id: newId,
+
+        iin: currentClient.iin,
+
+        name: currentClient.name,
+
+        phone: currentClient.phone,
+
+        address: currentClient.address,
+
+        date: formattedDate,
+
+        duration,
+
+        amount,
+
+        totalReturn,
+
+        status: "Активный",
+
+        issuedBy: currentUser,
+
+        issuedAt: new Date().toISOString(),
+
+        payments: [],
+
+        history: [
+
+            {
+                action: "repeat_loan",
+                user: currentUser,
+                amount: amount,
+                totalReturn: totalReturn,
+                date: new Date().toISOString()
+            }
+
+        ]
+
     };
 
-    generateClientSchedule(repeatClient);
+   generateClientSchedule(repeatClient);
+
     clientsDatabase.push(repeatClient);
+
     saveToLocalStorage();
 
-    alert(`Новый займ для клиента ${currentClient.name} успешно выдан!`);
-    navigateToPage('client-list');
+    alert("✅ Повторный займ успешно выдан!");
+
+    navigateToPage("client-list");
+
 }
 
 function showClientProfilePage(clientId) {
+
     activeProfileClientId = clientId;
-    let client = clientsDatabase.find(c => c.id === clientId);
+
+    const client = clientsDatabase.find(c => c.id === clientId);
+
     if (!client) {
-        alert("Клиент не найден!");
-        navigateToPage('client-list');
+        alert("❌ Клиент не найден!");
+        navigateToPage("client-list");
         return;
     }
+
     generateClientSchedule(client);
 
-    document.getElementById('profName').innerText = client.name;
-    document.getElementById('profIin').innerText = client.iin;
-    document.getElementById('profPhone').innerText = client.phone;
-    document.getElementById('profAddress').innerText = client.address;
-    document.getElementById('profDate').innerText = client.date;
-    document.getElementById('profAmount').innerText = `₸ ${client.amount.toLocaleString()}`;
-    document.getElementById('profTotalReturn').innerText = `₸ ${client.totalReturn.toLocaleString()}`;
+    document.getElementById("profName").innerText = client.name;
+    document.getElementById("profIin").innerText = client.iin;
+    document.getElementById("profPhone").innerText = client.phone;
+    document.getElementById("profAddress").innerText = client.address;
+    document.getElementById("profDate").innerText = client.date;
 
-    let paidAmount = client.payments.filter(p => p.isPaid).reduce((sum, p) => sum + p.amount, 0);
-    let remaining = client.totalReturn - paidAmount;
-    document.getElementById('profRemaining').innerText = `₸ ${remaining.toLocaleString()}`;
+    document.getElementById("profAmount").innerText =
+        "₸ " + client.amount.toLocaleString();
 
-    let today = new Date().toISOString().split('T')[0];
-    document.getElementById('reLoanDate').value = today;
+    document.getElementById("profTotalReturn").innerText =
+        "₸ " + client.totalReturn.toLocaleString();
 
-    const scheduleBody = document.getElementById('profile-schedule-body');
-    let calcBox = document.getElementById('multi-day-calc-box');
-    if (!calcBox) {
-        calcBox = document.createElement('div');
-        calcBox.id = 'multi-day-calc-box';
-        calcBox.style = "background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 16px; color: #1e40af; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;";
-        scheduleBody.parentNode.insertBefore(calcBox, scheduleBody.parentNode.querySelector('table'));
+    const paidAmount = client.payments
+        .filter(p => p.isPaid)
+        .reduce((sum, p) => sum + p.amount, 0);
+
+    const remaining = client.totalReturn - paidAmount;
+
+    document.getElementById("profRemaining").innerText =
+        "₸ " + remaining.toLocaleString();
+
+    document.getElementById("reLoanDate").value =
+        new Date().toISOString().split("T")[0];
+
+    const calcBox = document.getElementById("calc-box");
+    const scheduleBody = document.getElementById("profile-schedule-body");
+
+    // Показываем кнопку повторного займа только админу и менеджеру
+    const repeatLoanBtn = document.getElementById("repeatLoanBtn");
+
+    if (repeatLoanBtn) {
+
+        repeatLoanBtn.style.display =
+            currentRole === "cashier" ? "none" : "block";
+
     }
-    calcBox.innerHTML = `<div><i class="fas fa-calculator"></i> Выбрано дней для оплаты: <b id="selected-days-count">0</b> | Общая сумма к приёму: <span style="font-size: 20px; font-weight: bold; color: #1d4ed8;">₸ <span id="selected-days-sum">0</span></span></div> <button class="btn-primary" style="background-color: #2563eb; padding: 8px 15px; font-size: 14px;" id="pay-selected-btn" disabled onclick="makeMultiPayment()">💵 Оплатить выбранные дни</button>`;
 
-    scheduleBody.innerHTML = client.payments.map((p, idx) => `
-        <tr style="${p.isPaid ? 'background-color: #f0fdf4;' : ''}">
-            <td>${p.isPaid ? `<b>День ${p.dayNumber}</b>` : `<input type="checkbox" class="payment-checkbox" data-index="${idx}" data-amount="${p.amount}" onchange="recalculateMultiPayment()" style="width: 18px; height: 18px; cursor: pointer; vertical-align: middle; margin-right: 8px;"> <b>День ${p.dayNumber}</b>`}</td>
-            <td>${p.date}</td>
-            <td><b>₸ ${p.amount.toLocaleString()}</b></td>
-            <td style="font-size:12px; color:#64748b;">Тело: ${p.principalPortion.toLocaleString()} | Доход: ${p.profitPortion.toLocaleString()}</td>
-            <td>${p.isPaid ? '<span class="badge" style="background:#dcfce7; color:#15803d;">Оплачено</span>' : '<span class="badge" style="background:#fee2e2; color:#991b1b;">Ожидает</span>'}</td>
-            <td>${p.isPaid ? `<button class="btn-primary" style="background-color:#ef4444; padding:4px 8px; font-size:12px;" onclick="cancelPayment(${idx})">Отмена</button>` : `<button class="btn-primary" style="background-color:#16a34a; padding:4px 8px; font-size:12px;" onclick="makePayment(${idx})">💵 Оплатить один день</button>`}</td>
-        </tr>
-    `).join('');
+    const paidDays =
+        client.payments.filter(p => p.isPaid).length;
 
-    document.getElementById('page-client-profile').classList.add('active');
+    if (calcBox) {
+
+        calcBox.innerHTML = `
+
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+
+            <div>
+
+                <b>Выбрано дней:</b>
+
+                <span id="selected-days-count">0</span>
+
+                <br>
+
+                <b>Сумма:</b>
+
+                ₸ <span id="selected-days-sum">0</span>
+
+                <br>
+
+                <b>Оплачено дней:</b>
+
+                ${paidDays} из ${client.payments.length}
+
+            </div>
+
+            <button
+                id="pay-selected-btn"
+                class="btn-primary"
+                disabled
+                onclick="makeMultiPayment()">
+
+                💵 Оплатить выбранные
+
+            </button>
+
+        </div>
+
+        `;
+
+    }
+
+    if (scheduleBody) {
+
+        scheduleBody.innerHTML =
+
+            client.payments.map((p, idx) => `
+<tr style="${p.isPaid ? 'background:#f0fdf4;' : ''}">
+
+<td>
+
+${!p.isPaid
+? `<input
+type="checkbox"
+class="payment-checkbox"
+data-index="${idx}"
+data-amount="${p.amount}"
+onchange="recalculateMultiPayment()">`
+: ""}
+
+<b>День ${p.dayNumber}</b>
+
+</td>
+
+<td>${p.date}</td>
+
+<td><b>₸ ${p.amount.toLocaleString()}</b></td>
+
+<td>
+
+Тело: ${p.principalPortion.toLocaleString()}<br>
+
+Доход: ${p.profitPortion.toLocaleString()}
+
+</td>
+
+<td>
+
+${p.isPaid
+? `<span style="color:green;">
+✅ Оплачено<br>
+${p.cashier ? "Кассир: " + p.cashier + "<br>" : ""}
+${p.paidAt ? new Date(p.paidAt).toLocaleString("ru-RU") : ""}
+</span>`
+: `<span style="color:red;">Ожидает</span>`}
+
+</td>
+
+<td>
+
+${p.isPaid
+
+? (currentRole === "admin"
+
+? `<button
+class="btn-primary"
+style="background:#ef4444"
+onclick="cancelPayment(${idx})">
+
+Отмена
+
+</button>`
+
+: "")
+
+: `<button
+class="btn-primary"
+style="background:#16a34a"
+onclick="makePayment(${idx})">
+
+💵 Оплатить
+
+</button>`}
+
+</td>
+
+</tr>
+
+`).join("");
+
+    }
+
+
+
+const historyBox = document.getElementById("client-history-list");
+
+if (historyBox) {
+
+    if (!client.history || client.history.length === 0) {
+
+        historyBox.innerHTML =
+            "<p style='color:#64748b;'>История пока отсутствует.</p>";
+
+    } else {
+
+        historyBox.innerHTML = client.history
+            .slice()
+            .reverse()
+            .map(item => `
+                <div style="
+                    padding:10px;
+                    border-bottom:1px solid #e2e8f0;
+                    margin-bottom:8px;">
+
+                    <b>${item.action}</b><br>
+
+                    ${item.amount ? "Сумма: ₸ " + item.amount.toLocaleString() + "<br>" : ""}
+
+                    ${item.paymentDay ? "День платежа: " + item.paymentDay + "<br>" : ""}
+
+                    ${item.cashier ? "Кассир: " + item.cashier + "<br>" : ""}
+
+                    ${item.date ? new Date(item.date).toLocaleString("ru-RU") : ""}
+
+                </div>
+            `).join("");
+
+    }
+
+}
+
+// Показываем страницу профиля
+const profilePage = document.getElementById("page-client-profile");
+
+if (profilePage) {
+    profilePage.classList.add("active");
+    profilePage.style.display = "block";
+}
+
 }
 
 function recalculateMultiPayment() {
-    let checkboxes = document.querySelectorAll('.payment-checkbox:checked');
+
+    const checkboxes =
+        document.querySelectorAll(".payment-checkbox:checked");
+
     let totalSum = 0;
-    let count = checkboxes.length;
-    checkboxes.forEach(cb => { totalSum += parseInt(cb.getAttribute('data-amount')); });
-    document.getElementById('selected-days-count').innerText = count;
-    document.getElementById('selected-days-sum').innerText = totalSum.toLocaleString();
-    let payBtn = document.getElementById('pay-selected-btn');
-    payBtn.disabled = (count === 0);
-    payBtn.style.opacity = (count === 0) ? "0.5" : "1";
+
+    const count = checkboxes.length;
+
+    checkboxes.forEach(cb => {
+        totalSum += parseInt(cb.dataset.amount);
+    });
+
+    document.getElementById("selected-days-count").innerText = count;
+
+    document.getElementById("selected-days-sum").innerText =
+        totalSum.toLocaleString();
+
+    const payBtn =
+        document.getElementById("pay-selected-btn");
+
+    if (payBtn) {
+        payBtn.disabled = count === 0;
+        payBtn.style.opacity = count === 0 ? "0.5" : "1";
+    }
+
 }
 
 function makeMultiPayment() {
-    let checkboxes = document.querySelectorAll('.payment-checkbox:checked');
+
+    const checkboxes =
+        document.querySelectorAll(".payment-checkbox:checked");
+
     if (checkboxes.length === 0) return;
-    let client = clientsDatabase.find(c => c.id === activeProfileClientId);
-    if (confirm(`Вы действительно хотите принять оплату за ${checkboxes.length} дней сразу?`)) {
-        checkboxes.forEach(cb => {
-            let idx = parseInt(cb.getAttribute('data-index'));
-            client.payments[idx].isPaid = true;
-        });
-        if (client.payments.every(p => p.isPaid)) client.status = "Закрыт";
-        saveToLocalStorage();
-        showClientProfilePage(activeProfileClientId);
+
+    const client =
+        clientsDatabase.find(c => c.id === activeProfileClientId);
+
+    if (!client) {
+        alert("❌ Клиент не найден.");
+        return;
     }
+
+    if (!confirm(`Вы действительно хотите принять оплату за ${checkboxes.length} дней?`)) {
+        return;
+    }
+
+    checkboxes.forEach(cb => {
+
+        const idx = parseInt(cb.dataset.index);
+
+        const payment = client.payments[idx];
+
+        payment.isPaid = true;
+        payment.paidAt = new Date().toISOString();
+        payment.cashier = currentUser;
+
+        if (!client.history) {
+            client.history = [];
+        }
+
+        client.history.push({
+
+            action: "payment",
+
+            cashier: currentUser,
+
+            paymentDay: payment.dayNumber,
+
+            amount: payment.amount,
+
+            date: new Date().toISOString()
+
+        });
+
+    });
+
+   if (client.payments.every(p => p.isPaid)) {
+        client.status = "Закрыт";
+    }
+
+    saveToLocalStorage();
+
+    showClientProfilePage(activeProfileClientId);
+
 }
 
 function makePayment(paymentIndex) {
-    let client = clientsDatabase.find(c => c.id === activeProfileClientId);
-    client.payments[paymentIndex].isPaid = true;
-    if (client.payments.every(p => p.isPaid)) client.status = "Закрыт";
+
+    const client = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
+
+    if (!client) {
+        alert("❌ Клиент не найден!");
+        return;
+    }
+
+    const payment = client.payments[paymentIndex];
+
+    if (!payment) {
+        alert("❌ Платёж не найден!");
+        return;
+    }
+
+    payment.isPaid = true;
+    payment.paidAt = new Date().toISOString();
+    payment.cashier = currentUser;
+
+    if (!client.history) {
+        client.history = [];
+    }
+
+    client.history.push({
+        action: "payment",
+        cashier: currentUser,
+        paymentDay: payment.dayNumber,
+        amount: payment.amount,
+        date: new Date().toISOString()
+    });
+
+    if (client.payments.every(p => p.isPaid)) {
+        client.status = "Закрыт";
+    }
+
     saveToLocalStorage();
+
     showClientProfilePage(activeProfileClientId);
+
 }
 
 function cancelPayment(paymentIndex) {
-    let client = clientsDatabase.find(c => c.id === activeProfileClientId);
-    client.payments[paymentIndex].isPaid = false;
-    client.status = "Активный";
-    saveToLocalStorage();
-    showClientProfilePage(activeProfileClientId);
-}
 
-function renderDailyReport() {
-    let reportDateInput = document.getElementById('dailyReportDate').value;
-    if (!reportDateInput) {
-        let today = new Date().toISOString().split('T')[0];
-        document.getElementById('dailyReportDate').value = today;
-        reportDateInput = today;
+    if (currentRole !== "admin") {
+        alert("❌ Только администратор может отменять оплату!");
+        return;
     }
-    const tbody = document.getElementById('daily-report-table-body');
-    tbody.innerHTML = "";
-    let totalExpectedSum = 0; let totalCollectedSum = 0; let counter = 1;
 
-    clientsDatabase.forEach(client => {
-        generateClientSchedule(client);
-        client.payments.forEach(payment => {
-            if (payment.isoDate === reportDateInput) {
-                totalExpectedSum += payment.amount;
-                if (payment.isPaid) totalCollectedSum += payment.amount;
-                tbody.innerHTML += `<tr style="${payment.isPaid ? 'background-color: #f0fdf4;' : ''}"><td>${counter++}</td><td><b>${client.name}</b></td><td>${client.phone}</td><td>${client.address}</td><td><b>₸ ${payment.amount.toLocaleString()}</b></td><td><span class="badge">День ${payment.dayNumber}</span></td><td>${payment.isPaid ? '<span class="badge" style="background:#dcfce7; color:#15803d;">Внесено в кассу</span>' : '<span class="badge" style="background:#fee2e2; color:#991b1b;">Еще не платил</span>'}</td></tr>`;
-            }
-        });
+    const client = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
+
+    if (!client) {
+        alert("❌ Клиент не найден!");
+        return;
+    }
+
+    const payment = client.payments[paymentIndex];
+
+    if (!payment) {
+        alert("❌ Платёж не найден!");
+        return;
+    }
+
+    payment.isPaid = false;
+    payment.paidAt = null;
+    payment.cashier = null;
+
+    client.status = "Активный";
+
+    if (!client.history) {
+        client.history = [];
+    }
+
+    client.history.push({
+        action: "cancel_payment",
+        admin: currentUser,
+        paymentDay: payment.dayNumber,
+        amount: payment.amount,
+        date: new Date().toISOString()
     });
 
-    document.getElementById('daily-expected-sum').innerText = `₸ ${totalExpectedSum.toLocaleString()}`;
-    document.getElementById('daily-collected-sum').innerText = `₸ ${totalCollectedSum.toLocaleString()}`;
-    let matchBox = document.getElementById('status-match-box');
-    if (totalExpectedSum === totalCollectedSum && totalExpectedSum > 0) {
-        matchBox.innerText = "🎉 ВСЁ СОШЛОСЬ! КАССА ИДЕАЛЬНА!";
-        matchBox.style.background = "#dcfce7"; matchBox.style.color = "#15803d";
-    } else {
-        matchBox.innerText = totalCollectedSum < totalExpectedSum ? "⚠️ Есть неразнесенные платежи" : "Касса пуста";
-        matchBox.style.background = "#fee2e2"; matchBox.style.color = "#991b1b";
+    saveToLocalStorage();
+
+    showClientProfilePage(activeProfileClientId);
+
+}
+function renderDailyReport() {
+
+    let reportDateInput = document.getElementById("dailyReportDate").value;
+
+    if (!reportDateInput) {
+        const today = new Date().toISOString().split("T")[0];
+        document.getElementById("dailyReportDate").value = today;
+        reportDateInput = today;
     }
+
+    const tbody = document.getElementById("daily-report-table-body");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    let totalExpectedSum = 0;
+    let totalCollectedSum = 0;
+    let counter = 1;
+
+    clientsDatabase.forEach(client => {
+
+        generateClientSchedule(client);
+
+        client.payments.forEach(payment => {
+
+            if (payment.isoDate === reportDateInput) {
+
+                totalExpectedSum += payment.amount;
+
+                if (payment.isPaid) {
+                    totalCollectedSum += payment.amount;
+                }
+
+                tbody.innerHTML += `
+<tr style="${payment.isPaid ? "background-color:#f0fdf4;" : ""}">
+    <td>${counter++}</td>
+    <td><b>${client.name}</b></td>
+    <td>${client.phone}</td>
+    <td>${client.address}</td>
+    <td><b>₸ ${payment.amount.toLocaleString()}</b></td>
+    <td><span class="badge">День ${payment.dayNumber}</span></td>
+    <td>
+        ${
+            payment.isPaid
+                ? `<span class="badge" style="background:#dcfce7;color:#15803d;">
+                    Внесено в кассу<br>
+                    ${payment.cashier ? "Кассир: " + payment.cashier : ""}
+                   </span>`
+                : `<span class="badge" style="background:#fee2e2;color:#991b1b;">
+                    Еще не платил
+                   </span>`
+        }
+    </td>
+</tr>`;
+
+            }
+
+        });
+
+    });
+
+    document.getElementById("daily-expected-sum").innerText =
+        `₸ ${totalExpectedSum.toLocaleString()}`;
+
+    document.getElementById("daily-collected-sum").innerText =
+        `₸ ${totalCollectedSum.toLocaleString()}`;
+
+    const matchBox = document.getElementById("status-match-box");
+
+    if (matchBox) {
+
+        if (totalExpectedSum === totalCollectedSum && totalExpectedSum > 0) {
+
+            matchBox.innerText = "🎉 ВСЁ СОШЛОСЬ! КАССА ИДЕАЛЬНА!";
+            matchBox.style.background = "#dcfce7";
+            matchBox.style.color = "#15803d";
+
+        } else {
+
+            matchBox.innerText =
+                totalCollectedSum < totalExpectedSum
+                    ? "⚠️ Есть неразнесенные платежи"
+                    : "Касса пуста";
+
+            matchBox.style.background = "#fee2e2";
+            matchBox.style.color = "#991b1b";
+
+        }
+
+    }
+
 }
 
 function renderTables() {
-    let filterValue = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : "Активный";
-    const filterActionsBlock = document.getElementById('statusFilter')?.parentNode;
-    let searchInput = document.getElementById('crm-search-input');
+
+    const statusFilter = document.getElementById("statusFilter");
+
+    const filterValue = statusFilter
+        ? statusFilter.value
+        : "Активный";
+
+    const filterActionsBlock =
+        statusFilter?.parentNode;
+
+    let searchInput =
+        document.getElementById("crm-search-input");
+
     if (filterActionsBlock && !searchInput) {
-        searchInput = document.createElement('input');
-        searchInput.id = 'crm-search-input';
-        searchInput.type = 'text';
-        searchInput.placeholder = '🔍 Поиск...';
-        searchInput.style = 'padding: 8px 12px; margin-left: 15px; border: 1px solid #cbd5e1; border-radius: 6px; width: 250px;';
-        searchInput.addEventListener('input', renderTables);
+
+        searchInput = document.createElement("input");
+
+        searchInput.id = "crm-search-input";
+        searchInput.type = "text";
+        searchInput.placeholder = "🔍 Поиск клиента...";
+
+        searchInput.style =
+            "padding:8px 12px;margin-left:15px;border:1px solid #cbd5e1;border-radius:6px;width:250px;";
+
+        searchInput.addEventListener("input", renderTables);
+
         filterActionsBlock.appendChild(searchInput);
+
     }
-    let searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : "";
-    let filteredClients = clientsDatabase.filter(c => {
-        let matchesStatus = (filterValue === "Все" || c.status === filterValue);
-        let matchesSearch = c.name.toLowerCase().includes(searchQuery) || (c.iin && c.iin.includes(searchQuery));
+
+    const searchQuery =
+        searchInput
+            ? searchInput.value.toLowerCase().trim()
+            : "";
+
+    const today =
+        new Date().toISOString().split("T")[0];
+
+    const filteredClients = clientsDatabase.filter(client => {
+
+        const hasDebt =
+            (client.payments || []).some(payment =>
+                payment.isoDate < today &&
+                !payment.isPaid
+            );
+
+        let clientGroup = "Активный";
+
+        if (client.status === "Закрыт") {
+            clientGroup = "Неактивный";
+        } else if (hasDebt) {
+            clientGroup = "Должник";
+        }
+
+        const matchesStatus =
+            filterValue === "Все" ||
+            filterValue === clientGroup;
+
+        const matchesSearch =
+            (client.name || "").toLowerCase().includes(searchQuery) ||
+            (client.iin || "").includes(searchQuery);
+
         return matchesStatus && matchesSearch;
+
     });
 
-    const clientTableBody = document.getElementById('clients-table-body');
-    if (clientTableBody) {
-        clientTableBody.innerHTML = filteredClients.map((c, index) => `
-            <tr><td>${index + 1}</td><td>${c.date}</td><td><b>${c.name}</b></td><td><span class="badge">${c.duration} дн.</span></td><td>₸ ${c.amount.toLocaleString()}</td><td style="color:#1d4ed8; font-weight:bold;">₸ ${c.totalReturn.toLocaleString()}</td><td><span class="badge" style="${c.status === 'Активный' ? 'background:#dcfce7; color:#15803d;' : 'background:#e2e8f0; color:#475569;'}">${c.status}</span></td><td><button class="btn-primary" onclick="navigateToPage('client-profile', ${c.id})">Открыть</button></td></tr>
-        `).join('');
+   const clientTableBody =
+    document.getElementById("clients-table-body");
+
+if (!clientTableBody) return;
+
+clientTableBody.innerHTML = filteredClients.map((c, index) => {
+
+    const hasDebt = (c.payments || []).some(payment =>
+        payment.isoDate < today &&
+        !payment.isPaid
+    );
+
+    let displayStatus = "Активный";
+    let badgeStyle = "background:#dcfce7;color:#15803d;";
+
+    if (c.status === "Закрыт") {
+
+        displayStatus = "Неактивный";
+        badgeStyle = "background:#e2e8f0;color:#475569;";
+
+    } else if (hasDebt) {
+
+        displayStatus = "Должник";
+        badgeStyle = "background:#fee2e2;color:#991b1b;";
+
     }
+
+    return `
+    <tr>
+
+        <td>${index + 1}</td>
+
+        <td>${c.date || "-"}</td>
+
+        <td><b>${c.name || "-"}</b></td>
+
+        <td>
+            <span class="badge">
+                ${c.duration || 0} дн.
+            </span>
+        </td>
+
+        <td>
+            ₸ ${(c.amount || 0).toLocaleString()}
+        </td>
+
+        <td style="color:#1d4ed8;font-weight:bold;">
+            ₸ ${(c.totalReturn || 0).toLocaleString()}
+        </td>
+
+        <td>
+            <span
+                class="badge"
+                style="${badgeStyle}">
+                ${displayStatus}
+            </span>
+        </td>
+
+        <td>
+
+            <button
+                class="btn-primary"
+                onclick="navigateToPage('client-profile', ${c.id})">
+
+                Открыть
+
+            </button>
+
+        </td>
+
+    </tr>
+    `;
+
+}).join("");
+
 }
 
 function calculateSchedule() {
-    let loanAmount = parseInt(document.getElementById('loanAmount').value);
-    let durationDays = parseInt(document.getElementById('durationDays').value);
+
+    const loanAmount =
+        parseInt(document.getElementById("loanAmount").value);
+
+    const durationDays =
+        parseInt(document.getElementById("durationDays").value);
+
     if (isNaN(loanAmount) || loanAmount <= 0) return;
-    let percentRate = (durationDays === 14) ? 0.075 : 0.15;
-    let totalReturn = loanAmount + (loanAmount * percentRate);
-    let startDate = new Date();
-    let workingDays = [];
-    let currentCheckDate = new Date(startDate);
-    
-    let dayOfWeek = startDate.getDay();
-    let isWeekendIssue = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
-    let totalWorkingDays = isWeekendIssue ? 26 : 27;
+
+    const percentRate =
+        durationDays === 14 ? 0.075 : 0.15;
+
+    const totalReturn =
+        loanAmount + (loanAmount * percentRate);
+
+    const startDate = new Date();
+
+    const workingDays = [];
+
+    const currentCheckDate = new Date(startDate);
+
+    let totalWorkingDays;
+
+    if (durationDays === 14) {
+        totalWorkingDays = 12;
+    } else {
+
+        const dayOfWeek = startDate.getDay();
+
+        const isWeekendIssue =
+            dayOfWeek === 5 ||
+            dayOfWeek === 6 ||
+            dayOfWeek === 0;
+
+        totalWorkingDays =
+            isWeekendIssue ? 26 : 27;
+
+    }
 
     while (workingDays.length < totalWorkingDays) {
-        currentCheckDate.setDate(currentCheckDate.getDate() + 1);
-        if (currentCheckDate.getDay() !== 1) { workingDays.push(new Date(currentCheckDate)); }
+
+        currentCheckDate.setDate(
+            currentCheckDate.getDate() + 1
+        );
+
+        if (currentCheckDate.getDay() !== 1) {
+            workingDays.push(new Date(currentCheckDate));
+        }
+
     }
 
-    let dailyPayment = Math.ceil((totalReturn / totalWorkingDays) / 100) * 100;
-    let lastPayment = totalReturn - (dailyPayment * (totalWorkingDays - 1));
-    let scheduleHTML = `<h3>Внутреннее разделение по дням</h3>`;
+    const dailyPayment =
+        Math.ceil((totalReturn / totalWorkingDays) / 100) * 100;
+
+    const lastPayment =
+        totalReturn -
+        (dailyPayment * (totalWorkingDays - 1));
+
     let remainingPrincipal = loanAmount;
+
+    let scheduleHTML =
+        "<h3>Внутреннее разделение по дням</h3>";
+
     for (let dayNumber = 1; dayNumber <= totalWorkingDays; dayNumber++) {
-        let currentPayment = (dayNumber === totalWorkingDays) ? lastPayment : dailyPayment;
-        let principalPortion = currentPayment <= remainingPrincipal ? currentPayment : remainingPrincipal;
-        let profitPortion = currentPayment - principalPortion;
+
+        const currentPayment =
+            dayNumber === totalWorkingDays
+                ? lastPayment
+                : dailyPayment;
+
+        const principalPortion =
+            currentPayment <= remainingPrincipal
+                ? currentPayment
+                : remainingPrincipal;
+
         remainingPrincipal -= principalPortion;
-        scheduleHTML += `<div class="day-row"><span><b>День ${dayNumber}</b> (${workingDays[dayNumber-1].toLocaleDateString('ru-RU')})</span><span>Платёж: <b>${currentPayment.toLocaleString()} ₸</b></span></div>`;
+
+        scheduleHTML += `
+<div class="day-row">
+    <span>
+        <b>День ${dayNumber}</b>
+        (${workingDays[dayNumber - 1].toLocaleDateString("ru-RU")})
+    </span>
+    <span>
+        Платёж:
+        <b>${currentPayment.toLocaleString()} ₸</b>
+    </span>
+</div>`;
+
     }
-    document.getElementById('scheduleResult').innerHTML = scheduleHTML;
+
+    const scheduleResult =
+        document.getElementById("scheduleResult");
+
+    if (scheduleResult) {
+        scheduleResult.innerHTML = scheduleHTML;
+    }
+
 }
 
 function setCurrentDate() {
-    let today = new Date().toISOString().split('T')[0];
-    if(document.getElementById('regDate')) document.getElementById('regDate').value = today;
-    if(document.getElementById('dailyReportDate')) document.getElementById('dailyReportDate').value = today;
+
+    const today =
+        new Date().toISOString().split("T")[0];
+
+    const regDate =
+        document.getElementById("regDate");
+
+    if (regDate) {
+        regDate.value = today;
+    }
+
+    const dailyReportDate =
+        document.getElementById("dailyReportDate");
+
+    if (dailyReportDate) {
+        dailyReportDate.value = today;
+    }
+
 }
 
-window.addEventListener('hashchange', handleRouting);
-document.addEventListener("DOMContentLoaded", function() {
+function toggleSubmenu(id) {
+    const submenu = document.getElementById(id);
+
+    if (!submenu) return;
+
+    submenu.classList.toggle("open");
+}
+
+function setClientFilter(status) {
+
+    const filterSelect =
+        document.getElementById("statusFilter");
+
+    if (!filterSelect) return;
+
+    filterSelect.value = status;
+
+    renderTables();
+
+}
+
+window.addEventListener("hashchange", handleRouting);
+
+document.addEventListener("DOMContentLoaded", () => {
+
     setCurrentDate();
-    checkCurrentSession(); 
+
+    checkCurrentSession();
+
 });
-// --- ПРИВЯЗКА ФУНКЦИЙ ДЛЯ КНОПОК В HTML ---
-window.checkLogin = checkLogin;
-window.handleLogout = handleLogout;
-window.navigateToPage = navigateToPage;
-window.registerClient = registerClient;
-window.issueRepeatLoan = issueRepeatLoan;
-window.deleteCurrentClient = deleteCurrentClient;
-window.calculateSchedule = calculateSchedule;
-window.makePayment = makePayment;
-window.makeMultiPayment = makeMultiPayment;
-window.cancelPayment = cancelPayment;
-window.recalculateMultiPayment = recalculateMultiPayment;
-window.renderTables = renderTables;
-window.renderDailyReport = renderDailyReport;
