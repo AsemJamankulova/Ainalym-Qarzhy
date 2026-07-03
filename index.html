@@ -89,19 +89,55 @@
                         <div class="category-title" onclick="toggleSubmenu('clients-sub')">
                             <i class="fas fa-users"></i> <span>Клиенты</span> <i class="fas fa-chevron-down arrow"></i>
                         </div>
-                        <div class="submenu open" id="clients-sub">
-                            <div class="submenu-item" onclick="navigateToPage('client-list')">Список клиентов</div>
-                            <div class="submenu-item" onclick="navigateToPage('client-reg')">Регистрация</div>
-                        </div>
-                    </div>
+                       <div class="submenu open" id="clients-sub">
+
+    <div class="submenu-item"
+         onclick="setClientFilter('Активный')">
+        Активные
+    </div>
+
+    <div class="submenu-item"
+         onclick="setClientFilter('Должник')">
+        Должники
+    </div>
+
+    <div class="submenu-item"
+         id="inactive-menu"
+         onclick="setClientFilter('Неактивный')">
+        Неактивные
+    </div>
+
+    <div class="submenu-item"
+         onclick="navigateToPage('client-reg')">
+        Регистрация
+    </div>
+
+</div>
                     <div class="menu-category">
                         <div class="category-title" onclick="toggleSubmenu('reports-sub')">
                             <i class="fas fa-chart-bar"></i> <span>Отчеты</span> <i class="fas fa-chevron-down arrow"></i>
                         </div>
                         <div class="submenu open" id="reports-sub">
-                            <div class="submenu-item" onclick="navigateToPage('daily-report')">Ежедневная касса (Сверка)</div>
-                            <div class="submenu-item" onclick="navigateToPage('monthly-report')">Общий итог</div>
-                        </div>
+
+    <div
+        id="daily-report-menu"
+        class="submenu-item"
+        onclick="navigateToPage('daily-report')">
+
+        Ежедневная касса (Сверка)
+
+    </div>
+
+    <div
+        id="monthly-report-menu"
+        class="submenu-item"
+        onclick="navigateToPage('monthly-report')">
+
+        Общий итог
+
+    </div>
+
+</div>
                     </div>
                 </nav>
             </aside>
@@ -186,11 +222,6 @@
                                     <option value="Закрыт">Неактивные / Закрытые</option>
                                 </select>
                             </div>
-<div style="display: flex; gap: 10px;">
-    <button onclick="downloadDatabase()" class="btn-primary" style="background-color: #059669; padding: 6px 12px;">💾 Сохранить БД</button>
-    <input type="file" id="importFile" onchange="uploadDatabase(event)" style="display: none;">
-    <button onclick="document.getElementById('importFile').click()" class="btn-primary" style="background-color: #2563eb; padding: 6px 12px;">📂 Загрузить БД</button>
-</div>
                         </div>
                         <div class="table-responsive">
                             <table>
@@ -256,12 +287,13 @@
                                     </select>
                                 </div>
                                 <div style="display: flex; align-items: flex-end;">
-                                    <button class="btn-primary" style="background-color: #16a34a; width: 100%; padding: 6px;" onclick="issueRepeatLoan()">Открыть новый займ</button>
+                                    <button id="repeatLoanBtn" class="btn-primary" style="background-color: #16a34a; width: 100%; padding: 6px;" onclick="issueRepeatLoan()">Открыть новый займ</button>
                                 </div>
                             </div>
                         </div>
 
                         <h3>Календарь платежей</h3>
+                        <div id="calc-box" style="margin:15px 0;"></div>
                         <div class="table-responsive">
                             <table>
                                 <thead>
@@ -273,12 +305,27 @@
                                         <th>Статус</th>
                                         <th>Действие</th>
                                     </tr>
-                                </thead>
-                                <tbody id="profile-schedule-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
+                               <table>
+    ...
+    <tbody id="profile-schedule-body"></tbody>
+</table>
+
+<div id="client-history-box" style="margin-top:20px;">
+
+    <h3>📜 История действий</h3>
+
+    <div id="client-history-list"
+         style="
+         background:#f8fafc;
+         border:1px solid #cbd5e1;
+         border-radius:8px;
+         padding:12px;
+         max-height:250px;
+         overflow-y:auto;">
+
+    </div>
+
+</div>
 
                 <!-- СВЕРКА КАССЫ ЗА ДЕНЬ -->
                 <section id="page-daily-report" class="page-section">
@@ -365,6 +412,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
