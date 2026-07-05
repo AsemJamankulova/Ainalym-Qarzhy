@@ -1,454 +1,1243 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-import { getFirestore, collection, getDocs, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+import {
+    db,
+    collection,
+    getDocs,
+    addDoc,
+    setDoc,
+    doc,
+    deleteDoc
+} from "./firebase.js";
+// ===============================================
+// AINALYM QARZHY CRM
+// Версия 2.0
+// ===============================================
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAkqiJvINU1lUKlyzVkcTTAYyZm2rIB3tU",
-  authDomain: "ainalym-qarzhy.firebaseapp.com",
-  projectId: "ainalym-qarzhy",
-  storageBucket: "ainalym-qarzhy.appspot.com",
-  messagingSenderId: "575286319270",
-  appId: "1:575286319270:web:b1565b7622ee028043bc67"
+// -------------------------
+// Пользователи
+// -------------------------
+
+const USERS = {
+
+    admin: {
+        login: "admin",
+        password: "12345",
+        role: "admin"
+    },
+
+    manager: {
+        login: "manager",
+        password: "12345",
+        role: "manager"
+    },
+
+    cashier: {
+        login: "cashier",
+        password: "12345",
+        role: "cashier"
+    }
+
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// -------------------------
+// Основные переменные
+// -------------------------
 
-// Теперь функции сохранения и загрузки будут работать с db вместо LocalStorage
-// ==========================================
-// 1. БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ CRM
-// ==========================================
-const allowedUsers = {
-    "saule": "12345",
-    "sadvakask": "050910",
-    "user3": "7777",
-    "user4": "8888",
-    "user5": "9999"
-};
+let currentUser = "";
+let currentRole = "";
 
-// ==========================================
-// 2. БЛОК АВТОРИЗАЦИИ И СЕССИЙ
-// ==========================================
-function checkCurrentSession() {
-    let loggedUser = localStorage.getItem("ainalym_qarzhy_user");
-    if (loggedUser && allowedUsers[loggedUser]) {
-        document.getElementById("auth-block").style.display = "none";
-        document.getElementById("crm-main-interface").style.display = "block";
-        document.getElementById("current-user-display").innerText = "Пользователь: " + loggedUser;
-        handleRouting(); 
-    } else {
-        document.getElementById("auth-block").style.display = "flex";
-        document.getElementById("crm-main-interface").style.display = "none";
-    }
-}
+let clientsDatabase = [];
 
-function checkLogin() {
-    let loginInp = document.getElementById("auth-login").value.trim();
-    let passInp = document.getElementById("auth-password").value.trim();
-    let errorMsg = document.getElementById("auth-error-msg");
-
-    if (allowedUsers[loginInp] && allowedUsers[loginInp] === passInp) {
-        errorMsg.style.display = "none";
-        localStorage.setItem("ainalym_qarzhy_user", loginInp); 
-        document.getElementById("auth-login").value = "";
-        document.getElementById("auth-password").value = "";
-        checkCurrentSession(); 
-    } else {
-        errorMsg.style.display = "block"; 
-    }
-}
-
-function handleLogout() {
-    localStorage.removeItem("ainalym_qarzhy_user");
-    checkCurrentSession();
-}
-
-// ==========================================
-// 3. БАЗА ДАННЫХ КЛИЕНТОВ
-// ==========================================
-let clientsDatabase = JSON.parse(localStorage.getItem("ainalym_clients_list")) || [];
 let activeProfileClientId = null;
 
-function saveToLocalStorage() {
-    localStorage.setItem("ainalym_clients_list", JSON.stringify(clientsDatabase));
+// Ежедневная касса
+let dailyCash = {};
+
+// -------------------------
+// LocalStorage
+// -------------------------
+
+// ===============================================
+// FIREBASE
+// ===============================================
+
+async function saveToLocalStorage() {
+
+    // Пока ничего не делаем.
+    // Клиенты теперь сохраняются сразу в Firebase.
+
 }
 
-// ==========================================
-// 4. НАВИГАЦИЯ И ИНТЕРФЕЙС
-// ==========================================
-function navigateToPage(pageId, clientId = null) {
-    if (pageId === 'client-profile' && clientId) {
-        window.location.hash = `profile?id=${clientId}`;
-    } else {
-        window.location.hash = pageId;
+async function loadFromLocalStorage() {
+
+    clientsDatabase = [];
+
+    const { collection, getDocs } = await import(
+        "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"
+    );
+
+    const snapshot = await getDocs(
+        collection(db, "clients")
+    );
+
+    snapshot.forEach(doc => {
+
+        clientsDatabase.push({
+
+            firebaseId: doc.id,
+
+            ...doc.data()
+
+        });
+
+    });
+
+}
+// -------------------------
+// Загрузка приложения
+// -------------------------
+
+document.addEventListener("DOMContentLoaded", async () => {
+
+    await loadFromLocalStorage();
+
+    renderClients();
+
+});
+// ===============================================
+// АВТОРИЗАЦИЯ
+// ===============================================
+
+function checkLogin() {
+
+    const login =
+        document.getElementById("auth-login").value.trim();
+
+    const password =
+        document.getElementById("auth-password").value.trim();
+
+    const error =
+        document.getElementById("auth-error-msg");
+
+    let foundUser = null;
+
+    Object.values(USERS).forEach(user => {
+
+        if (
+            user.login === login &&
+            user.password === password
+        ) {
+            foundUser = user;
+        }
+
+    });
+
+    if (!foundUser) {
+
+        error.style.display = "block";
+        return;
+
     }
+
+    error.style.display = "none";
+
+    currentUser = foundUser.login;
+    currentRole = foundUser.role;
+
+    localStorage.setItem("crmUser", currentUser);
+    localStorage.setItem("crmRole", currentRole);
+
+    openCRM();
+
 }
 
-function handleRouting() {
-    if (!localStorage.getItem("ainalym_qarzhy_user")) return;
-    let hash = window.location.hash.replace('#', '');
-    document.querySelectorAll('.page-section').forEach(section => section.classList.remove('active'));
+// ===============================================
+// ОТКРЫТИЕ CRM
+// ===============================================
+
+function openCRM() {
+
+    document.getElementById("auth-block").style.display = "none";
+
+    document.getElementById("crm-main-interface").style.display = "block";
+
+    document.getElementById("current-user-display").innerHTML =
+        "👤 " + currentUser;
+
+    navigateToPage("calculator");
     
-    if (hash.startsWith('profile?id=')) {
-        let clientId = parseInt(hash.split('=')[1]);
-        if (clientId) showClientProfilePage(clientId);
-    } else {
-        let pageId = hash || 'client-list';
-        let element = document.getElementById('page-' + pageId);
-        if (element) element.classList.add('active');
-        if (pageId === 'daily-report') renderDailyReport();
-        else renderTables();
-    }
+
 }
 
-// ==========================================
-// 5. УПРАВЛЕНИЕ КЛИЕНТАМИ И ЗАЙМАМИ
-// ==========================================
+// ===============================================
+// ВЫХОД
+// ===============================================
 
-function deleteCurrentClient() {
-    if (confirm("Вы уверены, что хотите полностью удалить этот займ?")) {
-        clientsDatabase = clientsDatabase.filter(c => c.id !== activeProfileClientId);
-        saveToLocalStorage();
-        alert("Займ успешно удален!");
-        navigateToPage('client-list');
-    }
+function handleLogout() {
+
+    localStorage.removeItem("crmUser");
+    localStorage.removeItem("crmRole");
+
+    currentUser = "";
+    currentRole = "";
+
+    document.getElementById("crm-main-interface").style.display = "none";
+
+    document.getElementById("auth-block").style.display = "flex";
+
 }
 
-function generateClientSchedule(client) {
-    if (client.payments && client.payments.length > 0) return;
+// ===============================================
+// ПРОВЕРКА СЕССИИ
+// ===============================================
 
-    let parts = client.date.split('.');
-    let startDate = new Date(parts[2], parts[1] - 1, parts[0]);
-    let dayOfWeek = startDate.getDay(); 
+function checkSession() {
 
-    // Новая логика: 26 или 27 дней
-    let isWeekendIssue = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
-    let totalWorkingDays = isWeekendIssue ? 26 : 27;
+    const user =
+        localStorage.getItem("crmUser");
 
-    let workingDays = [];
-    let currentCheckDate = new Date(startDate);
+    const role =
+        localStorage.getItem("crmRole");
 
-    while (workingDays.length < totalWorkingDays) {
-        currentCheckDate.setDate(currentCheckDate.getDate() + 1); 
-        if (currentCheckDate.getDay() !== 1) { 
-            workingDays.push(new Date(currentCheckDate)); 
+    if (!user) return;
+
+    currentUser = user;
+    currentRole = role;
+
+    openCRM();
+
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    loadFromLocalStorage();
+
+    checkSession();
+
+});
+// ===============================================
+// НАВИГАЦИЯ
+// ===============================================
+
+function navigateToPage(pageId) {
+
+    // Скрываем все страницы
+    document.querySelectorAll(".page-section").forEach(page => {
+
+        page.classList.remove("active");
+        page.style.display = "none";
+
+    });
+
+    // Показываем нужную
+    const currentPage =
+        document.getElementById("page-" + pageId);
+
+    if (currentPage) {
+
+        currentPage.classList.add("active");
+        currentPage.style.display = "block";
+
+    }
+
+    // Подсветка меню
+    document.querySelectorAll(".menu-item").forEach(item => {
+
+        item.classList.remove("active");
+
+    });
+
+    document.querySelectorAll(".menu-item").forEach(item => {
+
+        const text =
+            item.innerText.trim();
+
+        if (
+            (pageId === "calculator" && text.includes("Калькулятор")) ||
+            (pageId === "client-list" && text.includes("Клиенты")) ||
+            (pageId === "client-reg" && text.includes("Регистрация")) ||
+            (pageId === "daily-report" && text.includes("Ежедневная")) ||
+            (pageId === "monthly-report" && text.includes("Общий"))
+        ) {
+
+            item.classList.add("active");
+
         }
+
+    });
+
+    // Автоматически обновляем страницы
+    if (pageId === "daily-report") {
+
+        renderDailyReport();
+
     }
 
-    let dailyPayment = Math.ceil((client.totalReturn / totalWorkingDays) / 100) * 100;
-    let lastPayment = client.totalReturn - (dailyPayment * (totalWorkingDays - 1));
+    if (pageId === "monthly-report") {
 
-    client.payments = [];
-    let remainingPrincipal = client.amount;
+        renderGeneralReport();
 
-    for (let i = 0; i < totalWorkingDays; i++) {
-        let currentPayment = (i === totalWorkingDays - 1) ? lastPayment : dailyPayment;
-        let principalPortion = 0;
-        let profitPortion = 0;
-
-        if (remainingPrincipal > 0) {
-            if (currentPayment <= remainingPrincipal) {
-                principalPortion = currentPayment;
-                remainingPrincipal -= currentPayment;
-            } else {
-                principalPortion = remainingPrincipal;
-                profitPortion = currentPayment - remainingPrincipal;
-                remainingPrincipal = 0;
-            }
-        } else {
-            profitPortion = currentPayment;
-        }
-
-        client.payments.push({
-            dayNumber: i + 1,
-            date: workingDays[i].toLocaleDateString('ru-RU'),
-            isoDate: new Date(workingDays[i].getTime() - (workingDays[i].getTimezoneOffset() * 60000)).toISOString().split('T')[0],
-            amount: currentPayment,
-            principalPortion: principalPortion,
-            profitPortion: profitPortion,
-            isPaid: false
-        });
     }
+
 }
 
-function registerClient() {
-    let iin = document.getElementById('regIin').value.trim();
-    let name = document.getElementById('regName').value.trim();
-    let phone = document.getElementById('regPhone').value.trim();
-    let address = document.getElementById('regAddress').value.trim() || "Не указан";
-    let regDateInput = document.getElementById('regDate').value; 
-    let amount = parseInt(document.getElementById('regAmount').value);
-    let duration = parseInt(document.getElementById('regDuration').value);
+// ===============================================
+// МОБИЛЬНОЕ МЕНЮ
+// ===============================================
 
-    if (!iin || !name || !phone || !regDateInput || isNaN(amount)) {
-        alert("Заполните все поля формы!");
-        return;
-    }
+function toggleSidebar() {
 
-    let parsedDate = new Date(regDateInput);
-    let formattedDate = parsedDate.toLocaleDateString('ru-RU');
-    let rate = (duration === 14) ? 0.075 : 0.15;
-    let totalReturn = amount + (amount * rate);
-    let newId = clientsDatabase.length > 0 ? clientsDatabase[clientsDatabase.length - 1].id + 1 : 101;
+    document
+        .getElementById("sidebar")
+        .classList.toggle("show");
 
-    let newClient = {
-        id: newId, iin: iin, name: name, phone: phone, address: address, date: formattedDate,
-        duration: duration, amount: amount, totalReturn: totalReturn, status: "Активный", payments: []
-    };
+}
+// ===============================================
+// ФУНКЦИИ КАЛЬКУЛЯТОРА
+// ===============================================
 
-    generateClientSchedule(newClient);
-    clientsDatabase.push(newClient);
-    saveToLocalStorage();
+// Округление вверх до 100 тенге
+function roundUp100(value) {
 
-    document.getElementById('regIin').value = '';
-    document.getElementById('regName').value = '';
-    document.getElementById('regPhone').value = '';
-    document.getElementById('regAddress').value = '';
-    setCurrentDate();
+    return Math.ceil(value / 100) * 100;
 
-    alert(`Клиент успешно добавлен!`);
-    navigateToPage('client-list');
 }
 
-function issueRepeatLoan() {
-    let currentClient = clientsDatabase.find(c => c.id === activeProfileClientId);
-    let reDateInput = document.getElementById('reLoanDate').value;
-    let amount = parseInt(document.getElementById('reLoanAmount').value);
-    let duration = parseInt(document.getElementById('reLoanDuration').value);
+// Получить процент займа
+function getLoanPercent(duration) {
 
-    if (!reDateInput || isNaN(amount) || amount <= 0) {
-        alert("Заполните дату и сумму займа!");
-        return;
-    }
+    if (duration == 14) return 7.5;
 
-    let parsedDate = new Date(reDateInput);
-    let formattedDate = parsedDate.toLocaleDateString('ru-RU');
-    let rate = (duration === 14) ? 0.075 : 0.15;
-    let totalReturn = amount + (amount * rate);
-    let newId = clientsDatabase.length > 0 ? clientsDatabase[clientsDatabase.length - 1].id + 1 : 101;
+    if (duration == 31) return 15;
 
-    let repeatClient = {
-        id: newId, iin: currentClient.iin, name: currentClient.name, phone: currentClient.phone,
-        address: currentClient.address, date: formattedDate, duration: duration, amount: amount,
-        totalReturn: totalReturn, status: "Активный", payments: []
-    };
+    return 0;
 
-    generateClientSchedule(repeatClient);
-    clientsDatabase.push(repeatClient);
-    saveToLocalStorage();
-
-    alert(`Новый займ для клиента ${currentClient.name} успешно выдан!`);
-    navigateToPage('client-list');
 }
 
-function showClientProfilePage(clientId) {
-    activeProfileClientId = clientId;
-    let client = clientsDatabase.find(c => c.id === clientId);
-    if (!client) {
-        alert("Клиент не найден!");
-        navigateToPage('client-list');
+// Получить количество рабочих платежей
+function getWorkingPayments(issueDate, duration) {
+
+    if (duration == 14) {
+
+        return 12;
+
+    }
+
+    const day = new Date(issueDate).getDay();
+
+    // Вторник, Среда, Четверг
+    if (day === 2 || day === 3 || day === 4) {
+
+        return 27;
+
+    }
+
+    // Пятница, Суббота, Воскресенье
+    return 26;
+
+}
+// ===============================================
+// РАСЧЁТ КАЛЬКУЛЯТОРА
+// ===============================================
+
+function calculateSchedule() {
+
+    const amount = Number(document.getElementById("loanAmount").value);
+    const duration = Number(document.getElementById("durationDays").value);
+
+    if (!amount || amount <= 0) {
+
+        alert("Введите сумму займа");
+
         return;
+
     }
-    generateClientSchedule(client);
 
-    document.getElementById('profName').innerText = client.name;
-    document.getElementById('profIin').innerText = client.iin;
-    document.getElementById('profPhone').innerText = client.phone;
-    document.getElementById('profAddress').innerText = client.address;
-    document.getElementById('profDate').innerText = client.date;
-    document.getElementById('profAmount').innerText = `₸ ${client.amount.toLocaleString()}`;
-    document.getElementById('profTotalReturn').innerText = `₸ ${client.totalReturn.toLocaleString()}`;
+    const today = new Date();
 
-    let paidAmount = client.payments.filter(p => p.isPaid).reduce((sum, p) => sum + p.amount, 0);
-    let remaining = client.totalReturn - paidAmount;
-    document.getElementById('profRemaining').innerText = `₸ ${remaining.toLocaleString()}`;
+    const percent = getLoanPercent(duration);
 
-    let today = new Date().toISOString().split('T')[0];
-    document.getElementById('reLoanDate').value = today;
+    const totalReturn = Math.round(amount * (1 + percent / 100));
 
-    const scheduleBody = document.getElementById('profile-schedule-body');
-    let calcBox = document.getElementById('multi-day-calc-box');
-    if (!calcBox) {
-        calcBox = document.createElement('div');
-        calcBox.id = 'multi-day-calc-box';
-        calcBox.style = "background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 16px; color: #1e40af; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;";
-        scheduleBody.parentNode.insertBefore(calcBox, scheduleBody.parentNode.querySelector('table'));
-    }
-    calcBox.innerHTML = `<div><i class="fas fa-calculator"></i> Выбрано дней для оплаты: <b id="selected-days-count">0</b> | Общая сумма к приёму: <span style="font-size: 20px; font-weight: bold; color: #1d4ed8;">₸ <span id="selected-days-sum">0</span></span></div> <button class="btn-primary" style="background-color: #2563eb; padding: 8px 15px; font-size: 14px;" id="pay-selected-btn" disabled onclick="makeMultiPayment()">💵 Оплатить выбранные дни</button>`;
+    const workingPayments = getWorkingPayments(today, duration);
 
-    scheduleBody.innerHTML = client.payments.map((p, idx) => `
-        <tr style="${p.isPaid ? 'background-color: #f0fdf4;' : ''}">
-            <td>${p.isPaid ? `<b>День ${p.dayNumber}</b>` : `<input type="checkbox" class="payment-checkbox" data-index="${idx}" data-amount="${p.amount}" onchange="recalculateMultiPayment()" style="width: 18px; height: 18px; cursor: pointer; vertical-align: middle; margin-right: 8px;"> <b>День ${p.dayNumber}</b>`}</td>
-            <td>${p.date}</td>
-            <td><b>₸ ${p.amount.toLocaleString()}</b></td>
-            <td style="font-size:12px; color:#64748b;">Тело: ${p.principalPortion.toLocaleString()} | Доход: ${p.profitPortion.toLocaleString()}</td>
-            <td>${p.isPaid ? '<span class="badge" style="background:#dcfce7; color:#15803d;">Оплачено</span>' : '<span class="badge" style="background:#fee2e2; color:#991b1b;">Ожидает</span>'}</td>
-            <td>${p.isPaid ? `<button class="btn-primary" style="background-color:#ef4444; padding:4px 8px; font-size:12px;" onclick="cancelPayment(${idx})">Отмена</button>` : `<button class="btn-primary" style="background-color:#16a34a; padding:4px 8px; font-size:12px;" onclick="makePayment(${idx})">💵 Оплатить один день</button>`}</td>
+    let payment = roundUp100(totalReturn / workingPayments);
+
+    let remaining = totalReturn;
+
+    let html = `
+        <h3>Расчёт займа</h3>
+
+        <p><b>Сумма:</b> ₸ ${amount.toLocaleString()}</p>
+
+        <p><b>Процент:</b> ${percent}%</p>
+
+        <p><b>К возврату:</b> ₸ ${totalReturn.toLocaleString()}</p>
+
+        <hr>
+
+        <table class="crm-table">
+
+        <thead>
+
+        <tr>
+
+        <th>День</th>
+
+        <th>Платёж</th>
+
         </tr>
-    `).join('');
 
-    document.getElementById('page-client-profile').classList.add('active');
-}
+        </thead>
 
-function recalculateMultiPayment() {
-    let checkboxes = document.querySelectorAll('.payment-checkbox:checked');
-    let totalSum = 0;
-    let count = checkboxes.length;
-    checkboxes.forEach(cb => { totalSum += parseInt(cb.getAttribute('data-amount')); });
-    document.getElementById('selected-days-count').innerText = count;
-    document.getElementById('selected-days-sum').innerText = totalSum.toLocaleString();
-    let payBtn = document.getElementById('pay-selected-btn');
-    payBtn.disabled = (count === 0);
-    payBtn.style.opacity = (count === 0) ? "0.5" : "1";
-}
+        <tbody>
+    `;
 
-function makeMultiPayment() {
-    let checkboxes = document.querySelectorAll('.payment-checkbox:checked');
-    if (checkboxes.length === 0) return;
-    let client = clientsDatabase.find(c => c.id === activeProfileClientId);
-    if (confirm(`Вы действительно хотите принять оплату за ${checkboxes.length} дней сразу?`)) {
-        checkboxes.forEach(cb => {
-            let idx = parseInt(cb.getAttribute('data-index'));
-            client.payments[idx].isPaid = true;
-        });
-        if (client.payments.every(p => p.isPaid)) client.status = "Закрыт";
-        saveToLocalStorage();
-        showClientProfilePage(activeProfileClientId);
+    for (let i = 1; i <= workingPayments; i++) {
+
+        let currentPayment = payment;
+
+        if (i === workingPayments) {
+
+            currentPayment = remaining;
+
+        }
+
+        remaining -= currentPayment;
+
+        html += `
+            <tr>
+
+                <td>${i}</td>
+
+                <td>₸ ${currentPayment.toLocaleString()}</td>
+
+            </tr>
+        `;
+
     }
+
+    html += `
+        </tbody>
+
+        </table>
+    `;
+
+    document.getElementById("scheduleResult").innerHTML = html;
+
+}
+// ===============================================
+// РЕГИСТРАЦИЯ КЛИЕНТА
+// ===============================================
+
+async function registerClient() {
+
+    const iin = document.getElementById("regIin").value.trim();
+    const name = document.getElementById("regName").value.trim();
+    const phone = document.getElementById("regPhone").value.trim();
+    const address = document.getElementById("regAddress").value.trim();
+    const issueDate = document.getElementById("regDate").value;
+    const amount = Number(document.getElementById("regAmount").value);
+    const duration = Number(document.getElementById("regDuration").value);
+
+    if (
+        iin === "" ||
+        name === "" ||
+        phone === "" ||
+        address === "" ||
+        issueDate === "" ||
+        amount <= 0
+    ) {
+        alert("Заполните все поля.");
+        return;
+    }
+
+    const percent = getLoanPercent(duration);
+
+    const totalReturn =
+        Math.round(amount * (1 + percent / 100));
+
+    const workingDays =
+        getWorkingPayments(issueDate, duration);
+
+    const dailyPayment =
+        roundUp100(totalReturn / workingDays);
+
+    const client = {
+
+        id: Date.now(),
+
+        iin,
+        name,
+        phone,
+        address,
+
+        issueDate,
+
+        amount,
+        duration,
+
+        percent,
+
+        totalReturn,
+
+        dailyPayment,
+
+        workingDays,
+
+        remaining: totalReturn,
+
+        status: "Активный",
+
+        history: [],
+
+        schedule: generateSchedule(
+            issueDate,
+            duration,
+            dailyPayment
+        )
+
+    };
+
+try {
+
+    const docRef = await window.addDoc(
+        window.collection(window.db, "clients"),
+        client
+    );
+
+    client.firebaseId = docRef.id;
+
+    clientsDatabase.push(client);
+
+    renderClients();
+
+    renderGeneralReport();
+
+    clearRegistrationForm();
+
+    alert("✅ Займ успешно выдан!");
+
+} catch (error) {
+
+    console.error(error);
+
+    alert(error.message);
+
 }
 
-function makePayment(paymentIndex) {
-    let client = clientsDatabase.find(c => c.id === activeProfileClientId);
-    client.payments[paymentIndex].isPaid = true;
-    if (client.payments.every(p => p.isPaid)) client.status = "Закрыт";
-    saveToLocalStorage();
-    showClientProfilePage(activeProfileClientId);
+}
+// ===============================================
+// ОЧИСТКА ФОРМЫ РЕГИСТРАЦИИ
+// ===============================================
+
+function clearRegistrationForm() {
+
+    document.getElementById("regIin").value = "";
+    document.getElementById("regName").value = "";
+    document.getElementById("regPhone").value = "";
+    document.getElementById("regAddress").value = "";
+    document.getElementById("regAmount").value = "";
+
+    document.getElementById("regDuration").value = "14";
+
+    document.getElementById("regDate").value =
+        new Date().toISOString().split("T")[0];
+
+}
+// ===============================================
+// СПИСОК КЛИЕНТОВ
+// ===============================================
+
+function renderClients() {
+
+    const tbody =
+        document.getElementById("clients-table-body");
+
+    tbody.innerHTML = "";
+
+    clientsDatabase.forEach((client, index) => {
+
+        tbody.innerHTML += `
+
+        <tr>
+
+            <td>${index + 1}</td>
+
+            <td>${client.issueDate || "-"}</td>
+
+            <td>${client.name || "-"}</td>
+
+            <td>${client.duration || 0} дней</td>
+
+            <td>₸ ${Number(client.amount || 0).toLocaleString()}</td>
+
+            <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
+
+            <td>${client.status || "Активный"}</td>
+
+            <td>
+
+                <button onclick="showClientProfile(${client.id})">
+
+                    Открыть
+
+                </button>
+
+            </td>
+
+        </tr>
+
+        `;
+
+    });
+
 }
 
-function cancelPayment(paymentIndex) {
-    let client = clientsDatabase.find(c => c.id === activeProfileClientId);
-    client.payments[paymentIndex].isPaid = false;
-    client.status = "Активный";
-    saveToLocalStorage();
-    showClientProfilePage(activeProfileClientId);
+// ===============================================
+// ФИЛЬТР КЛИЕНТОВ
+// ===============================================
+
+let currentClientFilter = "all";
+
+function setClientFilter(filter) {
+
+    currentClientFilter = filter;
+
+    renderClients();
+
+}
+
+window.setClientFilter = setClientFilter;
+
+// ===============================================
+// ОТКРЫТЬ ПРОФИЛЬ КЛИЕНТА
+// ===============================================
+
+function openClient(clientId) {
+
+    const client = clientsDatabase.find(c => c.id === clientId);
+
+    if (!client) {
+
+        alert("Клиент не найден.");
+
+        return;
+
+    }
+
+    activeProfileClientId = clientId;
+
+    document.getElementById("profName").textContent = client.name;
+    document.getElementById("profIin").textContent = client.iin;
+    document.getElementById("profPhone").textContent = client.phone;
+    document.getElementById("profAddress").textContent = client.address;
+    document.getElementById("profDate").textContent = client.issueDate;
+
+    document.getElementById("profAmount").textContent =
+        "₸ " + client.amount.toLocaleString();
+
+    document.getElementById("profTotalReturn").textContent =
+        "₸ " + client.totalReturn.toLocaleString();
+
+    document.getElementById("profRemaining").textContent =
+        "₸ " + client.remaining.toLocaleString();
+
+    // ===== ГРАФИК ПЛАТЕЖЕЙ =====
+
+    const tbody = document.getElementById("paymentScheduleBody");
+
+    tbody.innerHTML = "";
+
+    client.schedule.forEach(day => {
+
+        tbody.innerHTML += `
+
+        <tr>
+
+            <td>${day.day}</td>
+
+            <td>${day.date}</td>
+
+            <td>₸ ${day.amount.toLocaleString()}</td>
+
+            <td>${day.paid ? "✅ Оплачено" : "⏳ Не оплачено"}</td>
+
+        </tr>
+
+        `;
+
+    });
+
+    navigateToPage("client-profile");
+
+}
+// ===============================================
+// СОЗДАНИЕ ГРАФИКА ПЛАТЕЖЕЙ
+// ===============================================
+
+function generateSchedule(issueDate, duration, payment) {
+
+    let schedule = [];
+
+    let currentDate = new Date(issueDate);
+
+    // Первый день оплаты — следующий день после выдачи
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    const totalDays = getWorkingPayments(issueDate, duration);
+
+    let dayNumber = 1;
+
+    while (schedule.length < totalDays) {
+
+        // Понедельник пропускаем
+        if (currentDate.getDay() !== 1) {
+
+            schedule.push({
+
+                day: dayNumber,
+
+                date: currentDate.toISOString().split("T")[0],
+
+                amount: payment,
+
+                paid: false
+
+            });
+
+            dayNumber++;
+
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+
+    }
+
+    return schedule;
+
+}
+
+// ===============================================
+// ОБНОВИТЬ ПРОФИЛЬ КЛИЕНТА
+// ===============================================
+
+function refreshClientProfile() {
+
+    if (activeProfileClientId == null) return;
+
+    const client = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
+
+    if (!client) return;
+
+    renderClientSchedule(client);
+
+}
+function showClientProfile(clientId) {
+
+    const client = clientsDatabase.find(
+        c => String(c.id) === String(clientId)
+    );
+
+    if (!client) {
+        alert("Клиент не найден.");
+        return;
+    }
+
+    activeProfileClientId = clientId;
+
+    document.getElementById("profName").textContent =
+        client.name || "";
+
+    document.getElementById("profIin").textContent =
+        client.iin || "";
+
+    document.getElementById("profPhone").textContent =
+        client.phone || "";
+
+    document.getElementById("profAddress").textContent =
+        client.address || "";
+
+    document.getElementById("profDate").textContent =
+        client.issueDate || "";
+
+    document.getElementById("profAmount").textContent =
+        "₸ " + Number(client.amount || 0).toLocaleString();
+
+    document.getElementById("profTotalReturn").textContent =
+        "₸ " + Number(client.totalReturn || 0).toLocaleString();
+
+    document.getElementById("profRemaining").textContent =
+        "₸ " + Number(client.remaining || 0).toLocaleString();
+
+    renderClientSchedule(client);
+
+    navigateToPage("client-profile");
+}
+// ===============================================
+// ПОЛУЧИТЬ ПЕРВЫЙ НЕОПЛАЧЕННЫЙ ПЛАТЁЖ
+// ===============================================
+
+function getNextPayment(client) {
+
+    return client.schedule.find(day => !day.paid);
+
+}
+// ===============================================
+// ОПЛАТА ЗА ОДИН ДЕНЬ
+// ===============================================
+
+async function payOneDay() {
+
+    if (activeProfileClientId == null) {
+
+        alert("Клиент не выбран.");
+        return;
+
+    }
+
+    const client = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
+
+    if (!client) return;
+
+    const payment = getNextPayment(client);
+
+    if (!payment) {
+
+        alert("✅ Займ уже полностью оплачен.");
+        return;
+
+    }
+
+    payment.paid = true;
+
+    client.remaining -= payment.amount;
+
+    if (client.remaining < 0) {
+
+        client.remaining = 0;
+
+    }
+
+    // Сохраняем обновлённого клиента в Firebase
+    await window.setDoc(
+        window.doc(window.db, "clients", client.firebaseId),
+        client
+    );
+
+    // Загружаем список заново из Firebase
+    await loadFromLocalStorage();
+
+    refreshClientProfile();
+
+    renderGeneralReport();
+
+    alert("✅ Оплата принята.");
+
+}
+// ===============================================
+// КНОПКА ОПЛАТЫ В ГРАФИКЕ
+// ===============================================
+
+function renderClientSchedule(client) {
+
+    const tbody = document.getElementById("profile-schedule-body");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    client.schedule.forEach(day => {
+
+        tbody.innerHTML += `
+
+        <tr>
+
+            <td>${day.day}</td>
+
+            <td>${day.date}</td>
+
+            <td>₸ ${day.amount.toLocaleString()}</td>
+
+            <td>-</td>
+
+            <td>${day.paid ? "✅ Оплачено" : "⏳ Не оплачено"}</td>
+
+            <td>
+
+                ${day.paid
+                    ? ""
+                    : `<button onclick="payOneDay()">Оплата</button>`}
+
+            </td>
+
+        </tr>
+
+        `;
+
+    });
+
+}
+// ===============================================
+// СУММА ОПЛАТЫ ЗА НЕСКОЛЬКО ДНЕЙ
+// ===============================================
+
+function calculateMultiPayment(client, days) {
+
+    let total = 0;
+
+    let count = 0;
+
+    for (const payment of client.schedule) {
+
+        if (!payment.paid && count < days) {
+
+            total += payment.amount;
+
+            count++;
+
+        }
+
+    }
+
+    return total;
+
+}
+// ===============================================
+// ОПЛАТА ЗА НЕСКОЛЬКО ДНЕЙ
+// ===============================================
+
+function updateMultiPaymentAmount() {
+
+    if (activeProfileClientId == null) return;
+
+    const client = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
+
+    if (!client) return;
+
+    const days = Number(document.getElementById("payDays").value);
+
+    const total = calculateMultiPayment(client, days);
+
+    document.getElementById("multiPayAmount").textContent =
+        "К оплате: ₸ " + total.toLocaleString();
+
+}
+
+async function paySeveralDays() {
+
+    if (activeProfileClientId == null) return;
+
+    const client = clientsDatabase.find(
+        c => String(c.id) === String(activeProfileClientId)
+    );
+
+    if (!client) {
+        alert("Клиент не найден.");
+        return;
+    }
+
+    const days = Number(document.getElementById("payDays").value);
+
+    let cashDate =
+        document.getElementById("cashPaymentDate").value;
+
+    if (!cashDate) {
+        alert("Выберите дату для ежедневной кассы.");
+        return;
+    }
+
+    let paid = 0;
+    let total = 0;
+
+    for (const payment of client.schedule) {
+
+        if (!payment.paid && paid < days) {
+
+            payment.paid = true;
+            client.remaining -= payment.amount;
+            total += payment.amount;
+            paid++;
+
+        }
+
+    }
+
+    if (client.remaining < 0) {
+        client.remaining = 0;
+    }
+
+    addToDailyCash(cashDate, total);
+
+    console.log(client);
+    console.log(client.firebaseId);
+
+    await window.setDoc(
+        window.doc(window.db, "clients", client.firebaseId),
+        client,
+        { merge: true }
+    );
+
+    await loadFromLocalStorage();
+
+    renderClients();
+
+    showClientProfile(client.id);
+
+    updateMultiPaymentAmount();
+
+    alert(
+        "✅ Принята оплата на сумму ₸ " +
+        total.toLocaleString()
+    );
+
+}
+// ===============================================
+// ЕЖЕДНЕВНАЯ КАССА
+// ===============================================
+
+function saveDailyCash() {
+
+    localStorage.setItem(
+        "dailyCash",
+        JSON.stringify(dailyCash)
+    );
+
+}
+
+function loadDailyCash() {
+
+    const data = localStorage.getItem("dailyCash");
+
+    if (data) {
+
+        dailyCash = JSON.parse(data);
+
+    }
+
+}
+
+function addToDailyCash(date, amount) {
+
+    if (!dailyCash[date]) {
+
+        dailyCash[date] = 0;
+
+    }
+
+    dailyCash[date] += amount;
+
+    saveDailyCash();
+
 }
 
 function renderDailyReport() {
-    let reportDateInput = document.getElementById('dailyReportDate').value;
-    if (!reportDateInput) {
-        let today = new Date().toISOString().split('T')[0];
-        document.getElementById('dailyReportDate').value = today;
-        reportDateInput = today;
-    }
-    const tbody = document.getElementById('daily-report-table-body');
+
+    const date =
+        document.getElementById("dailyReportDate").value;
+
+    // Если дата ещё не выбрана — ничего не показываем
+    if (!date) return;
+
+    const tbody =
+        document.getElementById("daily-report-table-body");
+
     tbody.innerHTML = "";
-    let totalExpectedSum = 0; let totalCollectedSum = 0; let counter = 1;
+
+    let sum = dailyCash[date] || 0;
+
+    document.getElementById("daily-collected-sum").textContent =
+        "₸ " + sum.toLocaleString();
+
+    if (sum > 0) {
+
+        tbody.innerHTML = `
+
+        <tr>
+
+            <td>${date}</td>
+
+            <td>₸ ${sum.toLocaleString()}</td>
+
+        </tr>
+
+        `;
+
+    }
+
+}
+// ===============================================
+// ОБЩИЙ ИТОГ
+// ===============================================
+
+function renderGeneralReport() {
+
+    let issued = 0;
+    let collected = 0;
+    let remaining = 0;
+
+    let active = 0;
+    let closed = 0;
 
     clientsDatabase.forEach(client => {
-        generateClientSchedule(client);
-        client.payments.forEach(payment => {
-            if (payment.isoDate === reportDateInput) {
-                totalExpectedSum += payment.amount;
-                if (payment.isPaid) totalCollectedSum += payment.amount;
-                tbody.innerHTML += `<tr style="${payment.isPaid ? 'background-color: #f0fdf4;' : ''}"><td>${counter++}</td><td><b>${client.name}</b></td><td>${client.phone}</td><td>${client.address}</td><td><b>₸ ${payment.amount.toLocaleString()}</b></td><td><span class="badge">День ${payment.dayNumber}</span></td><td>${payment.isPaid ? '<span class="badge" style="background:#dcfce7; color:#15803d;">Внесено в кассу</span>' : '<span class="badge" style="background:#fee2e2; color:#991b1b;">Еще не платил</span>'}</td></tr>`;
-            }
-        });
+
+        const amount = Number(client.amount || 0);
+        const totalReturn = Number(client.totalReturn || 0);
+        const balance = Number(client.remaining || 0);
+
+        issued += amount;
+
+        collected += (totalReturn - balance);
+
+        remaining += balance;
+
+        if (balance > 0) {
+
+            active++;
+
+        } else {
+
+            closed++;
+
+        }
+
     });
 
-    document.getElementById('daily-expected-sum').innerText = `₸ ${totalExpectedSum.toLocaleString()}`;
-    document.getElementById('daily-collected-sum').innerText = `₸ ${totalCollectedSum.toLocaleString()}`;
-    let matchBox = document.getElementById('status-match-box');
-    if (totalExpectedSum === totalCollectedSum && totalExpectedSum > 0) {
-        matchBox.innerText = "🎉 ВСЁ СОШЛОСЬ! КАССА ИДЕАЛЬНА!";
-        matchBox.style.background = "#dcfce7"; matchBox.style.color = "#15803d";
-    } else {
-        matchBox.innerText = totalCollectedSum < totalExpectedSum ? "⚠️ Есть неразнесенные платежи" : "Касса пуста";
-        matchBox.style.background = "#fee2e2"; matchBox.style.color = "#991b1b";
-    }
+    const profit = collected - issued;
+
+    document.getElementById("total-issued").textContent =
+        "₸ " + issued.toLocaleString();
+
+    document.getElementById("total-collected").textContent =
+        "₸ " + collected.toLocaleString();
+
+    document.getElementById("total-profit").textContent =
+        "₸ " + profit.toLocaleString();
+
+    document.getElementById("total-remaining").textContent =
+        "₸ " + remaining.toLocaleString();
+
+    document.getElementById("total-active-count").textContent =
+        active;
+
+    document.getElementById("total-closed-count").textContent =
+        closed;
+
 }
+// ===============================================
+// ЗАПУСК ПРИЛОЖЕНИЯ
+// ===============================================
 
-function renderTables() {
-    let filterValue = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : "Активный";
-    const filterActionsBlock = document.getElementById('statusFilter')?.parentNode;
-    let searchInput = document.getElementById('crm-search-input');
-    if (filterActionsBlock && !searchInput) {
-        searchInput = document.createElement('input');
-        searchInput.id = 'crm-search-input';
-        searchInput.type = 'text';
-        searchInput.placeholder = '🔍 Поиск...';
-        searchInput.style = 'padding: 8px 12px; margin-left: 15px; border: 1px solid #cbd5e1; border-radius: 6px; width: 250px;';
-        searchInput.addEventListener('input', renderTables);
-        filterActionsBlock.appendChild(searchInput);
-    }
-    let searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : "";
-    let filteredClients = clientsDatabase.filter(c => {
-        let matchesStatus = (filterValue === "Все" || c.status === filterValue);
-        let matchesSearch = c.name.toLowerCase().includes(searchQuery) || (c.iin && c.iin.includes(searchQuery));
-        return matchesStatus && matchesSearch;
-    });
+loadFromLocalStorage();
+loadDailyCash();
 
-    const clientTableBody = document.getElementById('clients-table-body');
-    if (clientTableBody) {
-        clientTableBody.innerHTML = filteredClients.map((c, index) => `
-            <tr><td>${index + 1}</td><td>${c.date}</td><td><b>${c.name}</b></td><td><span class="badge">${c.duration} дн.</span></td><td>₸ ${c.amount.toLocaleString()}</td><td style="color:#1d4ed8; font-weight:bold;">₸ ${c.totalReturn.toLocaleString()}</td><td><span class="badge" style="${c.status === 'Активный' ? 'background:#dcfce7; color:#15803d;' : 'background:#e2e8f0; color:#475569;'}">${c.status}</span></td><td><button class="btn-primary" onclick="navigateToPage('client-profile', ${c.id})">Открыть</button></td></tr>
-        `).join('');
+renderClients();
+renderGeneralReport();
+
+document.getElementById("regDate").valueAsDate = new Date();
+document.getElementById("cashPaymentDate").valueAsDate = new Date();
+function cancelLastPayment() {
+
+    if (activeProfileClientId == null) return;
+
+    const client = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
+
+    if (!client) return;
+
+    for (let i = client.schedule.length - 1; i >= 0; i--) {
+
+        const payment = client.schedule[i];
+
+        if (payment.paid) {
+
+            payment.paid = false;
+
+            client.remaining += payment.amount;
+
+            saveToLocalStorage();
+
+            refreshClientProfile();
+
+            renderGeneralReport();
+
+            alert("↩ Последняя оплата отменена.");
+
+            return;
+
+        }
+
     }
+
+    alert("Нет оплаченных дней.");
+
 }
+// ===============================================
+// Делаем функции доступными из HTML
+// ===============================================
 
-function calculateSchedule() {
-    let loanAmount = parseInt(document.getElementById('loanAmount').value);
-    let durationDays = parseInt(document.getElementById('durationDays').value);
-    if (isNaN(loanAmount) || loanAmount <= 0) return;
-    let percentRate = (durationDays === 14) ? 0.075 : 0.15;
-    let totalReturn = loanAmount + (loanAmount * percentRate);
-    let startDate = new Date();
-    let workingDays = [];
-    let currentCheckDate = new Date(startDate);
-    
-    let dayOfWeek = startDate.getDay();
-    let isWeekendIssue = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
-    let totalWorkingDays = isWeekendIssue ? 26 : 27;
-
-    while (workingDays.length < totalWorkingDays) {
-        currentCheckDate.setDate(currentCheckDate.getDate() + 1);
-        if (currentCheckDate.getDay() !== 1) { workingDays.push(new Date(currentCheckDate)); }
-    }
-
-    let dailyPayment = Math.ceil((totalReturn / totalWorkingDays) / 100) * 100;
-    let lastPayment = totalReturn - (dailyPayment * (totalWorkingDays - 1));
-    let scheduleHTML = `<h3>Внутреннее разделение по дням</h3>`;
-    let remainingPrincipal = loanAmount;
-    for (let dayNumber = 1; dayNumber <= totalWorkingDays; dayNumber++) {
-        let currentPayment = (dayNumber === totalWorkingDays) ? lastPayment : dailyPayment;
-        let principalPortion = currentPayment <= remainingPrincipal ? currentPayment : remainingPrincipal;
-        let profitPortion = currentPayment - principalPortion;
-        remainingPrincipal -= principalPortion;
-        scheduleHTML += `<div class="day-row"><span><b>День ${dayNumber}</b> (${workingDays[dayNumber-1].toLocaleDateString('ru-RU')})</span><span>Платёж: <b>${currentPayment.toLocaleString()} ₸</b></span></div>`;
-    }
-    document.getElementById('scheduleResult').innerHTML = scheduleHTML;
-}
-
-function setCurrentDate() {
-    let today = new Date().toISOString().split('T')[0];
-    if(document.getElementById('regDate')) document.getElementById('regDate').value = today;
-    if(document.getElementById('dailyReportDate')) document.getElementById('dailyReportDate').value = today;
-}
-
-window.addEventListener('hashchange', handleRouting);
-document.addEventListener("DOMContentLoaded", function() {
-    setCurrentDate();
-    checkCurrentSession(); 
-});
-// --- ПРИВЯЗКА ФУНКЦИЙ ДЛЯ КНОПОК В HTML ---
 window.checkLogin = checkLogin;
-window.handleLogout = handleLogout;
 window.navigateToPage = navigateToPage;
-window.registerClient = registerClient;
-window.issueRepeatLoan = issueRepeatLoan;
-window.deleteCurrentClient = deleteCurrentClient;
 window.calculateSchedule = calculateSchedule;
-window.makePayment = makePayment;
-window.makeMultiPayment = makeMultiPayment;
-window.cancelPayment = cancelPayment;
-window.recalculateMultiPayment = recalculateMultiPayment;
-window.renderTables = renderTables;
+window.registerClient = registerClient;
+window.showClientProfile = showClientProfile;
+window.paySeveralDays = paySeveralDays;
+window.updateMultiPaymentAmount = updateMultiPaymentAmount;
+window.cancelLastPayment = cancelLastPayment;
 window.renderDailyReport = renderDailyReport;
+window.toggleSidebar = toggleSidebar;
+// ===============================================
+// УДАЛИТЬ КЛИЕНТА
+// ===============================================
+
+async function deleteCurrentClient() {
+
+    if (activeProfileClientId == null) return;
+
+    const client = clientsDatabase.find(
+        c => String(c.id) === String(activeProfileClientId)
+    );
+
+    if (!client) {
+        alert("Клиент не найден.");
+        return;
+    }
+
+    if (!confirm("Удалить этот займ?")) return;
+
+    if (client.firebaseId) {
+        await window.deleteDoc(
+            window.doc(window.db, "clients", client.firebaseId)
+        );
+    }
+
+    clientsDatabase = clientsDatabase.filter(
+        c => String(c.id) !== String(activeProfileClientId)
+    );
+
+    renderClients();
+    renderGeneralReport();
+
+    navigateToPage("client-list");
+
+    alert("✅ Займ удалён.");
+
+}
+window.deleteCurrentClient = deleteCurrentClient;
+
+window.deleteCurrentClient = deleteCurrentClient;
+window.registerClient = registerClient;
+window.calculateSchedule = calculateSchedule;
+window.navigateToPage = navigateToPage;
+window.checkLogin = checkLogin;
+window.paySeveralDays = paySeveralDays;
+window.cancelLastPayment = cancelLastPayment;
+window.updateMultiPaymentAmount = updateMultiPaymentAmount;
+window.renderDailyReport = renderDailyReport;
+window.setClientFilter = setClientFilter;
