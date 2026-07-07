@@ -279,99 +279,168 @@
             </section>
 
             <!-- =====================
-              <section id="page-client-profile" class="page-section" style="display:none;">
-    <h2>📄 Профиль клиента</h2>
-    
-    <button onclick="copyClientLink()" class="primary-btn" style="margin-bottom: 15px;">
-        🔗 Скопировать ссылку для Excel
-    </button>
+                 ПРОФИЛЬ КЛИЕНТА
+            ====================== -->
+            <section id="page-client-profile"
+                     class="page-section"
+                     style="display:none;">
 
-    <div class="card profile-grid">
-        <div><b>ФИО:</b> <span id="profName"></span></div>
-        <div><b>ИИН:</b> <span id="profIin"></span></div>
-        <div><b>Телефон:</b> <span id="profPhone"></span></div>
-        <div><b>Адрес:</b> <span id="profAddress"></span></div>
-        <div><b>Дата:</b> <span id="profDate"></span></div>
-    </div>
+                <h2>📄 Профиль клиента</h2>
 
-    <div class="card summary-grid">
-        <div>
-            <div>Выдано</div>
-            <h3 id="profAmount">₸ 0</h3>
-        </div>
-        <div>
-            <div>К возврату</div>
-            <h3 id="profTotalReturn">₸ 0</h3>
-        </div>
-        <div>
-            <div>Остаток</div>
-            <h3 id="profRemaining">₸ 0</h3>
-        </div>
-    </div>
+                <div class="card profile-grid">
 
-    <div id="calc-box" class="card">
-        <h3>Принять оплату</h3>
-        <label>Дата для ежедневной кассы</label>
-        <input type="date" id="cashPaymentDate">
-        <label>Количество дней</label>
-        <select id="payDays" onchange="updateMultiPaymentAmount()">
-            <option value="1">1 день</option>
-            <option value="2">2 дня</option>
-            <option value="3">3 дня</option>
-            <option value="4">4 дня</option>
-            <option value="5">5 дней</option>
-            <option value="6">6 дней</option>
-            <option value="7">7 дней</option>
-            <option value="8">8 дней</option>
-            <option value="9">9 дней</option>
-            <option value="10">10 дней</option>
-        </select>
-        <h3 id="multiPayAmount">К оплате: ₸ 0</h3>
-        <button onclick="paySeveralDays()">✅ Принять оплату</button>
-        <button onclick="cancelLastPayment()" class="danger-btn" style="margin-top:10px;">
-            ↩ Отменить последнюю оплату
-        </button>
-    </div>
+                    <div><b>ФИО:</b> <span id="profName"></span></div>
+                    <div><b>ИИН:</b> <span id="profIin"></span></div>
+                    <div><b>Телефон:</b> <span id="profPhone"></span></div>
+                    <div><b>Адрес:</b> <span id="profAddress"></span></div>
+                    <div><b>Дата:</b> <span id="profDate"></span></div>
 
-    <div class="card">
-        <h3>График платежей</h3>
-        <table class="crm-table">
-            <thead>
-                <tr>
-                    <th>День</th>
-                    <th>Дата</th>
-                    <th>Сумма</th>
-                    <th>Разделение</th>
-                    <th>Статус</th>
-                    <th>Оплата</th>
-                </tr>
-            </thead>
-            <tbody id="profile-schedule-body"></tbody>
-        </table>
-    </div>
+                </div>
 
-    <div class="card">
-        <h3>Повторный займ</h3>
-        <div class="form-grid">
-            <div><label>Дата</label><input id="reLoanDate" type="date" /></div>
-            <div><label>Сумма</label><input id="reLoanAmount" type="number" /></div>
-            <div><label>Срок</label>
-                <select id="reLoanDuration">
-                    <option value="14">14 дней</option>
-                    <option value="31">31 день</option>
-                </select>
-            </div>
-        </div>
-        <button id="repeatLoanBtn" class="primary-btn" onclick="issueRepeatLoan()">Выдать повторный займ</button>
-    </div>
+                <div class="card summary-grid">
 
-    <div class="card">
-        <h3>История</h3>
-        <div id="client-history-list"></div>
-    </div>
+                    <div>
+                        <div>Выдано</div>
+                        <h3 id="profAmount">₸ 0</h3>
+                    </div>
 
-    <button class="danger-btn" onclick="deleteCurrentClient()">Удалить займ</button>
-</section>
+                    <div>
+                        <div>К возврату</div>
+                        <h3 id="profTotalReturn">₸ 0</h3>
+                    </div>
+
+                    <div>
+                        <div>Остаток</div>
+                        <h3 id="profRemaining">₸ 0</h3>
+                    </div>
+
+                </div>
+
+                <div id="calc-box" class="card">
+
+    <h3>Принять оплату</h3>
+
+<label>Дата для ежедневной кассы</label>
+
+<input
+    type="date"
+    id="cashPaymentDate">
+
+<label>Количество дней</label>
+
+<select id="payDays">
+
+    <option value="1">1 день</option>
+    <option value="2">2 дня</option>
+    <option value="3">3 дня</option>
+    <option value="4">4 дня</option>
+    <option value="5">5 дней</option>
+    <option value="6">6 дней</option>
+    <option value="7">7 дней</option>
+    <option value="8">8 дней</option>
+    <option value="9">9 дней</option>
+    <option value="10">10 дней</option>
+
+</select>
+
+<h3 id="multiPayAmount">
+    К оплате: ₸ 0
+</h3>
+
+<button onclick="paySeveralDays()">
+    ✅ Принять оплату
+</button>
+
+<button
+    onclick="cancelLastPayment()"
+    class="danger-btn"
+    style="margin-top:10px;">
+
+    ↩ Отменить последнюю оплату
+
+</button>
+
+</div>
+
+                <div class="card">
+
+                    <h3>График платежей</h3>
+
+                    <table class="crm-table">
+
+                        <thead>
+
+                        <tr>
+                            <th>День</th>
+                            <th>Дата</th>
+                            <th>Сумма</th>
+                            <th>Разделение</th>
+                            <th>Статус</th>
+                            <th>Оплата</th>
+                        </tr>
+
+                        </thead>
+
+                        <tbody id="profile-schedule-body"></tbody>
+
+                    </table>
+
+                </div>
+
+                <div class="card">
+
+                    <h3>Повторный займ</h3>
+
+                    <div class="form-grid">
+
+                        <div>
+                            <label>Дата</label>
+                            <input id="reLoanDate" type="date" />
+                        </div>
+
+                        <div>
+                            <label>Сумма</label>
+                            <input id="reLoanAmount" type="number" />
+                        </div>
+
+                        <div>
+                            <label>Срок</label>
+
+                            <select id="reLoanDuration">
+                                <option value="14">14 дней</option>
+                                <option value="31">31 день</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <button id="repeatLoanBtn"
+                            class="primary-btn"
+                            onclick="issueRepeatLoan()">
+
+                        Выдать повторный займ
+
+                    </button>
+
+                </div>
+
+                <div class="card">
+
+                    <h3>История</h3>
+
+                    <div id="client-history-list"></div>
+
+                </div>
+
+                <button class="danger-btn"
+                        onclick="deleteCurrentClient()">
+
+                    Удалить займ
+
+                </button>
+
+            </section>
+
             <!-- =====================
      ЕЖЕДНЕВНАЯ КАССА
 ====================== -->
@@ -485,8 +554,7 @@
 
 </div>
 
-<script type="module" src="firebase.js"></script>
 <script type="module" src="app.js"></script>
-    
+
 </body>
 </html>
