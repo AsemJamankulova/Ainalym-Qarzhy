@@ -1125,11 +1125,14 @@ function renderGeneralReport() {
 // ЗАПУСК ПРИЛОЖЕНИЯ
 // ===============================================
 
-loadFromLocalStorage();
-loadDailyCash();
-
-renderClients();
-renderGeneralReport();
+// В самом конце файла, перед тем как делаешь window.функции, напиши это:
+async function init() {
+    await loadFromLocalStorage();
+    loadDailyCash();
+    renderClients();
+    renderGeneralReport();
+}
+init();
 
 document.getElementById("regDate").valueAsDate = new Date();
 document.getElementById("cashPaymentDate").valueAsDate = new Date();
