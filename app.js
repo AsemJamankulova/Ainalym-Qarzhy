@@ -92,17 +92,7 @@ async function loadFromLocalStorage() {
     });
 
 }
-// -------------------------
-// Загрузка приложения
-// -------------------------
 
-document.addEventListener("DOMContentLoaded", async () => {
-
-    await loadFromLocalStorage();
-
-    renderClients();
-
-});
 // ===============================================
 // АВТОРИЗАЦИЯ
 // ===============================================
@@ -431,6 +421,8 @@ function calculateSchedule() {
 
 async function registerClient() {
 
+    console.log("REGISTER CLIENT");
+
     const iin = document.getElementById("regIin").value.trim();
     const name = document.getElementById("regName").value.trim();
     const phone = document.getElementById("regPhone").value.trim();
@@ -498,33 +490,33 @@ async function registerClient() {
 
     };
 
-try {
+    try {
+        // 1. Сохраняем в Firebase
+        const docRef = await window.addDoc(
+            window.collection(window.db, "clients"),
+            client
+        );
 
-    const docRef = await window.addDoc(
-        window.collection(window.db, "clients"),
-        client
-    );
+        console.log("Сохранено!", docRef.id);
 
-    client.firebaseId = docRef.id;
+        // 2. ВАЖНО: Перезагружаем список из базы данных, чтобы массив clientsDatabase 
+        // был актуальным и без дублей
+        await loadFromLocalStorage();
 
-    clientsDatabase.push(client);
+        // 3. Обновляем интерфейс
+        renderClients();
+        renderGeneralReport();
+        clearRegistrationForm();
 
-    renderClients();
+        alert("✅ Займ успешно выдан!");
 
-    renderGeneralReport();
+    } catch (error) {
 
-    clearRegistrationForm();
+        console.error(error);
 
-    alert("✅ Займ успешно выдан!");
+        alert("Ошибка при сохранении: " + error.message);
 
-} catch (error) {
-
-    console.error(error);
-
-    alert(error.message);
-
-}
-
+    }
 }
 // ===============================================
 // ОЧИСТКА ФОРМЫ РЕГИСТРАЦИИ
@@ -1178,20 +1170,7 @@ function cancelLastPayment() {
     alert("Нет оплаченных дней.");
 
 }
-// ===============================================
-// Делаем функции доступными из HTML
-// ===============================================
 
-window.checkLogin = checkLogin;
-window.navigateToPage = navigateToPage;
-window.calculateSchedule = calculateSchedule;
-window.registerClient = registerClient;
-window.showClientProfile = showClientProfile;
-window.paySeveralDays = paySeveralDays;
-window.updateMultiPaymentAmount = updateMultiPaymentAmount;
-window.cancelLastPayment = cancelLastPayment;
-window.renderDailyReport = renderDailyReport;
-window.toggleSidebar = toggleSidebar;
 // ===============================================
 // УДАЛИТЬ КЛИЕНТА
 // ===============================================
@@ -1229,7 +1208,6 @@ async function deleteCurrentClient() {
     alert("✅ Займ удалён.");
 
 }
-window.deleteCurrentClient = deleteCurrentClient;
 
 window.deleteCurrentClient = deleteCurrentClient;
 window.registerClient = registerClient;
