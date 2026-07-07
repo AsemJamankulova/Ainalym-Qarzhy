@@ -48,11 +48,10 @@ let currentRole = "";
 let clientsDatabase = [];
 
 let activeProfileClientId = null;
-let currentClientFilter = "all"; // Добавляем эту переменную
+let currentClientFilter = "all"; // <--- ОБЯЗАТЕЛЬНО ДОБАВЬ ЭТУ СТРОКУ
 
 // Ежедневная касса
 let dailyCash = {};
-
 // -------------------------
 // LocalStorage
 // -------------------------
@@ -1212,18 +1211,14 @@ window.cancelLastPayment = function() {
 window.setClientFilter = function(filter) {
     console.log("Установлен фильтр:", filter);
     
-    // Переводим русские слова с кнопок HTML в формат для кода
-    if (filter === "Все") currentClientFilter = "all";
-    else if (filter === "Активный") currentClientFilter = "active";
-    else if (filter === "Должник") currentClientFilter = "debtor";
-    else if (filter === "Неактивный") currentClientFilter = "closed";
-    else currentClientFilter = filter; // На случай если передали английский текст
+    // Присваиваем значение глобальной переменной
+    currentClientFilter = filter; 
 
+    // Вызываем функцию отрисовки, если она существует
     if (typeof renderClients === "function") {
         renderClients();
     }
 };
-
 // ===============================================
 // РАБОТА СО ССЫЛКАМИ (ДЛЯ EXCEL)
 // ===============================================
