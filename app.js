@@ -1256,25 +1256,28 @@ window.setClientFilter = function(filter) {
 };
 
 // ===============================================
-// РЕГИСТРАЦИЯ ФУНКЦИЙ ДЛЯ КНОПОК
+// РЕГИСТРАЦИЯ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ И ФУНКЦИЙ
 // ===============================================
 
-// 1. Фильтрация клиентов
+// Привязываем фильтр к окну, чтобы HTML его видел
+window.currentClientFilter = "all"; 
+
 window.setClientFilter = function(filter) {
     console.log("Установлен фильтр:", filter);
     
-    if (filter === "Все") currentClientFilter = "all";
-    else if (filter === "Активный") currentClientFilter = "active";
-    else if (filter === "Должник") currentClientFilter = "debtor";
-    else if (filter === "Неактивный") currentClientFilter = "closed";
-    else currentClientFilter = filter;
+    // Перевод названий кнопок в значения
+    if (filter === "Все") window.currentClientFilter = "all";
+    else if (filter === "Активный") window.currentClientFilter = "active";
+    else if (filter === "Должник") window.currentClientFilter = "debtor";
+    else if (filter === "Неактивный") window.currentClientFilter = "closed";
+    else window.currentClientFilter = filter;
 
     if (typeof renderClients === "function") {
         renderClients();
     }
 };
 
-// 2. Все остальные функции — теперь они «видны» кнопкам в HTML
+// Привязываем все функции к window
 window.showClientProfile = showClientProfile;
 window.navigateToPage = navigateToPage;
 window.registerClient = registerClient;
@@ -1288,4 +1291,4 @@ window.calculateSchedule = calculateSchedule;
 window.copyClientLink = copyClientLink;
 window.updateMultiPaymentAmount = updateMultiPaymentAmount;
 
-console.log("Все функции успешно привязаны к window!");
+console.log("Глобальные переменные и функции успешно привязаны к window!");
