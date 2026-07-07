@@ -1154,71 +1154,52 @@ async function init() {
 init();
 
 // ===============================================
-// УПРАВЛЕНИЕ КЛИЕНТАМИ
+// УПРАВЛЕНИЕ КЛИЕНТАМИ (ПОЛНАЯ ЗАМЕНА)
 // ===============================================
 
 window.showClientProfile = function(clientId) {
-    // Ищем клиента и по id, и по firebaseId для надежности
-    const client = clientsDatabase.find(c => String(c.id) === String(clientId) || String(c.firebaseId) === String(clientId));
+    console.log("--- ОТЛАДКА: Попытка открыть профиль ---");
+    console.log("Запрошенный ID:", clientId);
+    console.log("Массив клиентов сейчас:", clientsDatabase);
+
+    // Приводим к строке для точного сравнения
+    const idToFind = String(clientId).trim();
+    
+    // Ищем клиента в массиве
+    const client = clientsDatabase.find(c => {
+        const idMatches = String(c.id || "").trim() === idToFind;
+        const firebaseMatches = String(c.firebaseId || "").trim() === idToFind;
+        return idMatches || firebaseMatches;
+    });
     
     if (!client) {
-        alert("Клиент не найден.");
+        console.error("ОШИБКА: Клиент с ID", idToFind, "НЕ НАЙДЕН в базе!");
+        alert("Клиент не найден. Попробуйте перезагрузить страницу.");
         return;
     }
 
-    activeProfileClientId = clientId;
+    console.log("УСПЕХ: Клиент найден:", client.name);
+    activeProfileClientId = client.firebaseId || client.id;
 
+    // Заполняем данные профиля
     document.getElementById("profName").textContent = client.name || "";
     document.getElementById("profIin").textContent = client.iin || "";
     document.getElementById("profPhone").textContent = client.phone || "";
     document.getElementById("profAddress").textContent = client.address || "";
     document.getElementById("profDate").textContent = client.issueDate || "";
+    
+    // Форматирование сумм
     document.getElementById("profAmount").textContent = "₸ " + Number(client.amount || 0).toLocaleString();
     document.getElementById("profTotalReturn").textContent = "₸ " + Number(client.totalReturn || 0).toLocaleString();
     document.getElementById("profRemaining").textContent = "₸ " + Number(client.remaining || 0).toLocaleString();
 
+    // Если есть график платежей - отрисовываем его
     if (typeof renderClientSchedule === "function") {
         renderClientSchedule(client);
     }
+    
+    // Переходим на страницу профиля
     window.navigateToPage("client-profile");
-};
-
-window.deleteCurrentClient = async function() {
-    if (activeProfileClientId == null) return;
-    const client = clientsDatabase.find(c => String(c.id) === String(activeProfileClientId) || String(c.firebaseId) === String(activeProfileClientId));
-
-    if (!client || !confirm("Удалить этот займ?")) return;
-
-    if (client.firebaseId && window.deleteDoc && window.doc && window.db) {
-        await window.deleteDoc(window.doc(window.db, "clients", client.firebaseId));
-    }
-
-    clientsDatabase = clientsDatabase.filter(c => String(c.id) !== String(activeProfileClientId) && String(c.firebaseId) !== String(activeProfileClientId));
-    
-    if (typeof renderClients === "function") renderClients();
-    if (typeof renderGeneralReport === "function") renderGeneralReport();
-    
-    window.navigateToPage("client-list");
-    alert("✅ Займ удалён.");
-};
-
-window.cancelLastPayment = function() {
-    if (activeProfileClientId == null) return;
-    const client = clientsDatabase.find(c => String(c.id) === String(activeProfileClientId) || String(c.firebaseId) === String(activeProfileClientId));
-    if (!client) return;
-
-    for (let i = client.schedule.length - 1; i >= 0; i--) {
-        if (client.schedule[i].paid) {
-            client.schedule[i].paid = false;
-            client.remaining += client.schedule[i].amount;
-            
-            window.showClientProfile(activeProfileClientId);
-            if (typeof renderGeneralReport === "function") renderGeneralReport();
-            alert("↩ Последняя оплата отменена.");
-            return;
-        }
-    }
-    alert("Нет оплаченных дней.");
 };
 
 // ===============================================
