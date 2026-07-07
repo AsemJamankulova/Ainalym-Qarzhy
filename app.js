@@ -197,13 +197,6 @@ function checkSession() {
 
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-
-    loadFromLocalStorage();
-
-    checkSession();
-
-});
 // ===============================================
 // НАВИГАЦИЯ
 // ===============================================
@@ -1131,50 +1124,38 @@ function cancelLastPayment() {
 }
 
 // ===============================================
-// УДАЛИТЬ КЛИЕНТА
+// ФИНАЛЬНЫЙ ЗАПУСК И ПРИВЯЗКИ
 // ===============================================
 
-async function deleteCurrentClient() {
-
-    if (activeProfileClientId == null) return;
-
-    const client = clientsDatabase.find(
-        c => String(c.id) === String(activeProfileClientId)
-    );
-
-    if (!client) {
-        alert("Клиент не найден.");
-        return;
-    }
-
-    if (!confirm("Удалить этот займ?")) return;
-
-    if (client.firebaseId) {
-        await window.deleteDoc(
-            window.doc(window.db, "clients", client.firebaseId)
-        );
-    }
-
-    clientsDatabase = clientsDatabase.filter(
-        c => String(c.id) !== String(activeProfileClientId)
-    );
-
+// 1. Инициализация (запускается при первом открытии)
+async function initApp() {
+    console.log("Запуск CRM...");
+    await loadFromLocalStorage();
+    loadDailyCash();
+    
     renderClients();
     renderGeneralReport();
-
-    navigateToPage("client-list");
-
-    alert("✅ Займ удалён.");
-
+    
+    // Установка начальных дат
+    const regDate = document.getElementById("regDate");
+    const cashDate = document.getElementById("cashPaymentDate");
+    if (regDate) regDate.valueAsDate = new Date();
+    if (cashDate) cashDate.valueAsDate = new Date();
 }
 
-window.deleteCurrentClient = deleteCurrentClient;
-window.registerClient = registerClient;
-window.calculateSchedule = calculateSchedule;
-window.navigateToPage = navigateToPage;
+// Запускаем!
+initApp();
+
+// 2. Привязки функций к кнопкам на странице (только один раз!)
 window.checkLogin = checkLogin;
+window.navigateToPage = navigateToPage;
+window.calculateSchedule = calculateSchedule;
+window.registerClient = registerClient;
+window.showClientProfile = showClientProfile;
 window.paySeveralDays = paySeveralDays;
-window.cancelLastPayment = cancelLastPayment;
 window.updateMultiPaymentAmount = updateMultiPaymentAmount;
+window.cancelLastPayment = cancelLastPayment;
 window.renderDailyReport = renderDailyReport;
+window.toggleSidebar = toggleSidebar;
+window.deleteCurrentClient = deleteCurrentClient;
 window.setClientFilter = setClientFilter;
