@@ -1299,3 +1299,5 @@ window.renderDailyReport = renderDailyReport;
 window.calculateSchedule = calculateSchedule;
 window.copyClientLink = copyClientLink;
 window.updateMultiPaymentAmount = updateMultiPaymentAmount;
+// Делаем функции доступными для кнопок в HTML
+window.showClientProfile = showClientProfile;
