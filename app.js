@@ -1141,7 +1141,8 @@ init();
 // ===============================================
 
 window.showClientProfile = function(clientId) {
-    const client = clientsDatabase.find(c => String(c.id) === String(clientId));
+    // Ищем клиента и по id, и по firebaseId для надежности
+    const client = clientsDatabase.find(c => String(c.id) === String(clientId) || String(c.firebaseId) === String(clientId));
     
     if (!client) {
         alert("Клиент не найден.");
@@ -1159,46 +1160,68 @@ window.showClientProfile = function(clientId) {
     document.getElementById("profTotalReturn").textContent = "₸ " + Number(client.totalReturn || 0).toLocaleString();
     document.getElementById("profRemaining").textContent = "₸ " + Number(client.remaining || 0).toLocaleString();
 
-    renderClientSchedule(client);
-    navigateToPage("client-profile");
+    if (typeof renderClientSchedule === "function") {
+        renderClientSchedule(client);
+    }
+    window.navigateToPage("client-profile");
 };
 
-async function deleteCurrentClient() {
+window.deleteCurrentClient = async function() {
     if (activeProfileClientId == null) return;
-    const client = clientsDatabase.find(c => String(c.id) === String(activeProfileClientId));
+    const client = clientsDatabase.find(c => String(c.id) === String(activeProfileClientId) || String(c.firebaseId) === String(activeProfileClientId));
 
     if (!client || !confirm("Удалить этот займ?")) return;
 
-    if (client.firebaseId) {
+    if (client.firebaseId && window.deleteDoc && window.doc && window.db) {
         await window.deleteDoc(window.doc(window.db, "clients", client.firebaseId));
     }
 
-    clientsDatabase = clientsDatabase.filter(c => String(c.id) !== String(activeProfileClientId));
-    renderClients();
-    renderGeneralReport();
-    navigateToPage("client-list");
+    clientsDatabase = clientsDatabase.filter(c => String(c.id) !== String(activeProfileClientId) && String(c.firebaseId) !== String(activeProfileClientId));
+    
+    if (typeof renderClients === "function") renderClients();
+    if (typeof renderGeneralReport === "function") renderGeneralReport();
+    
+    window.navigateToPage("client-list");
     alert("✅ Займ удалён.");
-}
+};
 
-function cancelLastPayment() {
+window.cancelLastPayment = function() {
     if (activeProfileClientId == null) return;
-    const client = clientsDatabase.find(c => c.id === activeProfileClientId);
+    const client = clientsDatabase.find(c => String(c.id) === String(activeProfileClientId) || String(c.firebaseId) === String(activeProfileClientId));
     if (!client) return;
 
     for (let i = client.schedule.length - 1; i >= 0; i--) {
         if (client.schedule[i].paid) {
             client.schedule[i].paid = false;
             client.remaining += client.schedule[i].amount;
-            // Сохраняем в Firebase (убедись, что функция сохранения работает)
-            // saveToFirebase(client); 
-            showClientProfile(activeProfileClientId);
-            renderGeneralReport();
+            
+            window.showClientProfile(activeProfileClientId);
+            if (typeof renderGeneralReport === "function") renderGeneralReport();
             alert("↩ Последняя оплата отменена.");
             return;
         }
     }
     alert("Нет оплаченных дней.");
-}
+};
+
+// ===============================================
+// ФИЛЬТР КЛИЕНТОВ (ИСПРАВЛЕННЫЙ)
+// ===============================================
+
+window.setClientFilter = function(filter) {
+    console.log("Установлен фильтр:", filter);
+    
+    // Переводим русские слова с кнопок HTML в формат для кода
+    if (filter === "Все") currentClientFilter = "all";
+    else if (filter === "Активный") currentClientFilter = "active";
+    else if (filter === "Должник") currentClientFilter = "debtor";
+    else if (filter === "Неактивный") currentClientFilter = "closed";
+    else currentClientFilter = filter; // На случай если передали английский текст
+
+    if (typeof renderClients === "function") {
+        renderClients();
+    }
+};
 
 // ===============================================
 // РАБОТА СО ССЫЛКАМИ (ДЛЯ EXCEL)
@@ -1214,27 +1237,14 @@ window.copyClientLink = function() {
 };
 
 // ===============================================
-// РЕГИСТРАЦИЯ ФУНКЦИЙ ДЛЯ HTML
+// РЕГИСТРАЦИЯ ОСТАЛЬНЫХ ФУНКЦИЙ ДЛЯ HTML
 // ===============================================
-window.checkLogin = checkLogin;
-window.navigateToPage = navigateToPage;
-window.calculateSchedule = calculateSchedule;
-window.registerClient = registerClient;
-window.showClientProfile = showClientProfile;
-window.paySeveralDays = paySeveralDays;
-window.updateMultiPaymentAmount = updateMultiPaymentAmount;
-window.cancelLastPayment = cancelLastPayment;
-window.renderDailyReport = renderDailyReport;
-window.toggleSidebar = toggleSidebar;
-window.deleteCurrentClient = deleteCurrentClient;
-window.setClientFilter = setClientFilter;
-// Делаем функции доступными для HTML-атрибутов onclick
-window.setClientFilter = setClientFilter;
-window.showClientProfile = showClientProfile;
-window.registerClient = registerClient;
-window.paySeveralDays = paySeveralDays;
-window.cancelLastPayment = cancelLastPayment;
-window.deleteCurrentClient = deleteCurrentClient;
-window.navigateToPage = navigateToPage;
-window.checkLogin = checkLogin;
-// Добавь сюда любые другие функции, которые ты вызываешь через onclick в HTML
+
+if (typeof checkLogin === "function") window.checkLogin = checkLogin;
+if (typeof navigateToPage === "function") window.navigateToPage = navigateToPage;
+if (typeof calculateSchedule === "function") window.calculateSchedule = calculateSchedule;
+if (typeof registerClient === "function") window.registerClient = registerClient;
+if (typeof paySeveralDays === "function") window.paySeveralDays = paySeveralDays;
+if (typeof updateMultiPaymentAmount === "function") window.updateMultiPaymentAmount = updateMultiPaymentAmount;
+if (typeof renderDailyReport === "function") window.renderDailyReport = renderDailyReport;
+if (typeof toggleSidebar === "function") window.toggleSidebar = toggleSidebar;
