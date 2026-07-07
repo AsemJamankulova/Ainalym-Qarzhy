@@ -546,22 +546,26 @@ function clearRegistrationForm() {
 // СПИСОК КЛИЕНТОВ
 // ===============================================
 
-function renderClients() {
+async function renderClients() { // Добавляем async
     const tbody = document.getElementById("clients-table-body");
     if (!tbody) return;
 
-    tbody.innerHTML = ""; 
-    const data = window.clientsDatabase || [];
+    // ЕСЛИ МАССИВ ПУСТ, ПОПЫТАЕМСЯ ЕЩЕ РАЗ ЗАГРУЗИТЬ (на всякий случай)
+    if (clientsDatabase.length === 0) {
+        await loadFromLocalStorage();
+    }
 
-    // Добавим отладку, чтобы увидеть, что происходит
+    tbody.innerHTML = "";
+    
+    // Используем window.clientsDatabase или просто clientsDatabase
+    const data = clientsDatabase || [];
+
     console.log("Фильтр сейчас:", currentClientFilter);
     console.log("Всего клиентов в памяти:", data.length);
 
     const filteredClients = data.filter(client => {
-        // Если фильтр "all" - показываем всех
         if (currentClientFilter === "all" || !currentClientFilter) return true;
         
-        // Сравниваем статусы
         const status = client.status || "Активный";
         if (currentClientFilter === "active") return status === "Активный";
         if (currentClientFilter === "debtor") return status === "Должник";
@@ -583,7 +587,7 @@ function renderClients() {
             <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
             <td>${client.status || "Активный"}</td>
             <td>
-                <button onclick="window.showClientProfile('${client.firebaseId}')">
+                <button onclick="window.showClientProfile('${client.firebaseId || client.id}')">
                     Открыть
                 </button>
             </td>
