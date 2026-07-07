@@ -1247,42 +1247,48 @@ window.setClientFilter = setClientFilter;
 // РАБОТА СО ССЫЛКАМИ (ДЛЯ EXCEL)
 // ===============================================
 
-// 1. Копирование ссылки в буфер обмена
-function copyClientLink() {
-    if (activeProfileClientId == null) return;
+// ===============================================
+// ИСПРАВЛЕННЫЙ ЗАПУСК И НАВИГАЦИЯ
+// ===============================================
 
-    // Генерируем ссылку (ссылаемся на текущий адрес сайта + ID клиента)
-    const baseUrl = window.location.origin + window.location.pathname;
-    const link = `${baseUrl}?clientId=${activeProfileClientId}`;
-
-    // Копируем
-    navigator.clipboard.writeText(link).then(() => {
-        alert("✅ Ссылка скопирована! Вставляй в Excel.");
-    }).catch(err => {
-        alert("Ошибка при копировании: " + err);
-    });
-}
-
-// 2. Автоматическое открытие профиля, если в ссылке есть clientId
-async function checkUrlParams() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const clientId = urlParams.get('clientId');
-
-    if (clientId) {
-        // Ждем загрузки данных из базы, чтобы ID нашлись
+async function init() {
+    try {
         await loadFromLocalStorage();
-        
-        // Открываем профиль
-        showClientProfile(clientId);
-        
-        // Показываем интерфейс (если он был скрыт)
-        document.getElementById("auth-block").style.display = "none";
-        document.getElementById("crm-main-interface").style.display = "block";
+        loadDailyCash();
+        renderClients();
+        renderGeneralReport();
+        console.log("CRM успешно инициализирована");
+    } catch (err) {
+        console.error("Ошибка при старте:", err);
     }
 }
 
-// 3. Регистрируем новую функцию, чтобы HTML её видел
-window.copyClientLink = copyClientLink;
+// Запускаем при открытии
+init();
 
-// 4. Запускаем проверку ссылки сразу при загрузке
-checkUrlParams();
+// Исправленная функция открытия профиля
+window.showClientProfile = function(clientId) {
+    // Находим клиента в базе
+    const client = clientsDatabase.find(c => String(c.id) === String(clientId));
+    
+    if (!client) {
+        console.error("Клиент с ID", clientId, "не найден в:", clientsDatabase);
+        alert("Клиент не найден в базе данных.");
+        return;
+    }
+
+    activeProfileClientId = clientId;
+
+    // Заполняем данные
+    document.getElementById("profName").textContent = client.name || "";
+    document.getElementById("profIin").textContent = client.iin || "";
+    document.getElementById("profPhone").textContent = client.phone || "";
+    document.getElementById("profAddress").textContent = client.address || "";
+    document.getElementById("profDate").textContent = client.issueDate || "";
+    document.getElementById("profAmount").textContent = "₸ " + Number(client.amount || 0).toLocaleString();
+    document.getElementById("profTotalReturn").textContent = "₸ " + Number(client.totalReturn || 0).toLocaleString();
+    document.getElementById("profRemaining").textContent = "₸ " + Number(client.remaining || 0).toLocaleString();
+
+    renderClientSchedule(client);
+    navigateToPage("client-profile");
+};
