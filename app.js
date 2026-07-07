@@ -1128,158 +1128,52 @@ function renderGeneralReport() {
 
 }
 // ===============================================
-// ЗАПУСК ПРИЛОЖЕНИЯ
-// ===============================================
-
-// В самом конце файла, перед тем как делаешь window.функции, напиши это:
-async function init() {
-    await loadFromLocalStorage();
-    loadDailyCash();
-    renderClients();
-    renderGeneralReport();
-}
-init();
-
-document.getElementById("regDate").valueAsDate = new Date();
-document.getElementById("cashPaymentDate").valueAsDate = new Date();
-function cancelLastPayment() {
-
-    if (activeProfileClientId == null) return;
-
-    const client = clientsDatabase.find(
-        c => c.id === activeProfileClientId
-    );
-
-    if (!client) return;
-
-    for (let i = client.schedule.length - 1; i >= 0; i--) {
-
-        const payment = client.schedule[i];
-
-        if (payment.paid) {
-
-            payment.paid = false;
-
-            client.remaining += payment.amount;
-
-            saveToLocalStorage();
-
-            refreshClientProfile();
-
-            renderGeneralReport();
-
-            alert("↩ Последняя оплата отменена.");
-
-            return;
-
-        }
-
-    }
-
-    alert("Нет оплаченных дней.");
-
-}
-// ===============================================
-// Делаем функции доступными из HTML
-// ===============================================
-
-window.checkLogin = checkLogin;
-window.navigateToPage = navigateToPage;
-window.calculateSchedule = calculateSchedule;
-window.registerClient = registerClient;
-window.showClientProfile = showClientProfile;
-window.paySeveralDays = paySeveralDays;
-window.updateMultiPaymentAmount = updateMultiPaymentAmount;
-window.cancelLastPayment = cancelLastPayment;
-window.renderDailyReport = renderDailyReport;
-window.toggleSidebar = toggleSidebar;
-// ===============================================
-// УДАЛИТЬ КЛИЕНТА
-// ===============================================
-
-async function deleteCurrentClient() {
-
-    if (activeProfileClientId == null) return;
-
-    const client = clientsDatabase.find(
-        c => String(c.id) === String(activeProfileClientId)
-    );
-
-    if (!client) {
-        alert("Клиент не найден.");
-        return;
-    }
-
-    if (!confirm("Удалить этот займ?")) return;
-
-    if (client.firebaseId) {
-        await window.deleteDoc(
-            window.doc(window.db, "clients", client.firebaseId)
-        );
-    }
-
-    clientsDatabase = clientsDatabase.filter(
-        c => String(c.id) !== String(activeProfileClientId)
-    );
-
-    renderClients();
-    renderGeneralReport();
-
-    navigateToPage("client-list");
-
-    alert("✅ Займ удалён.");
-
-}
-window.deleteCurrentClient = deleteCurrentClient;
-
-window.deleteCurrentClient = deleteCurrentClient;
-window.registerClient = registerClient;
-window.calculateSchedule = calculateSchedule;
-window.navigateToPage = navigateToPage;
-window.checkLogin = checkLogin;
-window.paySeveralDays = paySeveralDays;
-window.cancelLastPayment = cancelLastPayment;
-window.updateMultiPaymentAmount = updateMultiPaymentAmount;
-window.renderDailyReport = renderDailyReport;
-window.setClientFilter = setClientFilter;
-
-// ===============================================
-// РАБОТА СО ССЫЛКАМИ (ДЛЯ EXCEL)
-// ===============================================
-
-// ===============================================
-// ИСПРАВЛЕННЫЙ ЗАПУСК И НАВИГАЦИЯ
+// ИНИЦИАЛИЗАЦИЯ И ЗАПУСК
 // ===============================================
 
 async function init() {
     try {
+        // 1. Грузим данные
         await loadFromLocalStorage();
+        
+        // 2. Инициализируем элементы
+        if (document.getElementById("regDate")) document.getElementById("regDate").valueAsDate = new Date();
+        if (document.getElementById("cashPaymentDate")) document.getElementById("cashPaymentDate").valueAsDate = new Date();
+        
         loadDailyCash();
         renderClients();
         renderGeneralReport();
-        console.log("CRM успешно инициализирована");
+        
+        // 3. Проверка ссылки для открытия профиля
+        const urlParams = new URLSearchParams(window.location.search);
+        const clientId = urlParams.get('clientId');
+        if (clientId) {
+            showClientProfile(clientId);
+        }
+        
+        console.log("CRM готова к работе");
     } catch (err) {
         console.error("Ошибка при старте:", err);
     }
 }
 
-// Запускаем при открытии
+// Запускаем всё один раз
 init();
 
-// Исправленная функция открытия профиля
+// ===============================================
+// УПРАВЛЕНИЕ КЛИЕНТАМИ
+// ===============================================
+
 window.showClientProfile = function(clientId) {
-    // Находим клиента в базе
     const client = clientsDatabase.find(c => String(c.id) === String(clientId));
     
     if (!client) {
-        console.error("Клиент с ID", clientId, "не найден в:", clientsDatabase);
-        alert("Клиент не найден в базе данных.");
+        alert("Клиент не найден.");
         return;
     }
 
     activeProfileClientId = clientId;
 
-    // Заполняем данные
     document.getElementById("profName").textContent = client.name || "";
     document.getElementById("profIin").textContent = client.iin || "";
     document.getElementById("profPhone").textContent = client.phone || "";
@@ -1292,3 +1186,69 @@ window.showClientProfile = function(clientId) {
     renderClientSchedule(client);
     navigateToPage("client-profile");
 };
+
+async function deleteCurrentClient() {
+    if (activeProfileClientId == null) return;
+    const client = clientsDatabase.find(c => String(c.id) === String(activeProfileClientId));
+
+    if (!client || !confirm("Удалить этот займ?")) return;
+
+    if (client.firebaseId) {
+        await window.deleteDoc(window.doc(window.db, "clients", client.firebaseId));
+    }
+
+    clientsDatabase = clientsDatabase.filter(c => String(c.id) !== String(activeProfileClientId));
+    renderClients();
+    renderGeneralReport();
+    navigateToPage("client-list");
+    alert("✅ Займ удалён.");
+}
+
+function cancelLastPayment() {
+    if (activeProfileClientId == null) return;
+    const client = clientsDatabase.find(c => c.id === activeProfileClientId);
+    if (!client) return;
+
+    for (let i = client.schedule.length - 1; i >= 0; i--) {
+        if (client.schedule[i].paid) {
+            client.schedule[i].paid = false;
+            client.remaining += client.schedule[i].amount;
+            // Сохраняем в Firebase (убедись, что функция сохранения работает)
+            // saveToFirebase(client); 
+            showClientProfile(activeProfileClientId);
+            renderGeneralReport();
+            alert("↩ Последняя оплата отменена.");
+            return;
+        }
+    }
+    alert("Нет оплаченных дней.");
+}
+
+// ===============================================
+// РАБОТА СО ССЫЛКАМИ (ДЛЯ EXCEL)
+// ===============================================
+
+window.copyClientLink = function() {
+    if (activeProfileClientId == null) return;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const link = `${baseUrl}?clientId=${activeProfileClientId}`;
+    navigator.clipboard.writeText(link).then(() => {
+        alert("✅ Ссылка скопирована!");
+    });
+};
+
+// ===============================================
+// РЕГИСТРАЦИЯ ФУНКЦИЙ ДЛЯ HTML
+// ===============================================
+window.checkLogin = checkLogin;
+window.navigateToPage = navigateToPage;
+window.calculateSchedule = calculateSchedule;
+window.registerClient = registerClient;
+window.showClientProfile = showClientProfile;
+window.paySeveralDays = paySeveralDays;
+window.updateMultiPaymentAmount = updateMultiPaymentAmount;
+window.cancelLastPayment = cancelLastPayment;
+window.renderDailyReport = renderDailyReport;
+window.toggleSidebar = toggleSidebar;
+window.deleteCurrentClient = deleteCurrentClient;
+window.setClientFilter = setClientFilter;
