@@ -1259,10 +1259,10 @@ window.setClientFilter = function(filter) {
 // РЕГИСТРАЦИЯ ФУНКЦИЙ ДЛЯ КНОПОК
 // ===============================================
 
+// 1. Фильтрация клиентов
 window.setClientFilter = function(filter) {
     console.log("Установлен фильтр:", filter);
     
-    // Перевод названий кнопок в значения фильтра
     if (filter === "Все") currentClientFilter = "all";
     else if (filter === "Активный") currentClientFilter = "active";
     else if (filter === "Должник") currentClientFilter = "debtor";
@@ -1274,6 +1274,7 @@ window.setClientFilter = function(filter) {
     }
 };
 
+// 2. Все остальные функции — теперь они «видны» кнопкам в HTML
 window.showClientProfile = showClientProfile;
 window.navigateToPage = navigateToPage;
 window.registerClient = registerClient;
@@ -1286,5 +1287,5 @@ window.renderDailyReport = renderDailyReport;
 window.calculateSchedule = calculateSchedule;
 window.copyClientLink = copyClientLink;
 window.updateMultiPaymentAmount = updateMultiPaymentAmount;
-// Делаем функции доступными для кнопок в HTML
-window.showClientProfile = showClientProfile;
+
+console.log("Все функции успешно привязаны к window!");
