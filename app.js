@@ -197,13 +197,7 @@ function checkSession() {
 
 }
 
-document.addEventListener("DOMContentLoaded", () => {
 
-    loadFromLocalStorage();
-
-    checkSession();
-
-});
 // ===============================================
 // НАВИГАЦИЯ
 // ===============================================
