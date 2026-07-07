@@ -1127,26 +1127,31 @@ function cancelLastPayment() {
 // ФИНАЛЬНЫЙ ЗАПУСК И ПРИВЯЗКИ
 // ===============================================
 
-// 1. Инициализация (запускается при первом открытии)
 async function initApp() {
     console.log("Запуск CRM...");
+    
+    // Сначала загружаем данные из Firebase
     await loadFromLocalStorage();
     loadDailyCash();
     
+    // Затем рисуем интерфейс
     renderClients();
     renderGeneralReport();
     
-    // Установка начальных дат
+    // Устанавливаем текущие даты в поля
     const regDate = document.getElementById("regDate");
     const cashDate = document.getElementById("cashPaymentDate");
     if (regDate) regDate.valueAsDate = new Date();
     if (cashDate) cashDate.valueAsDate = new Date();
+    
+    // Проверяем сессию пользователя (если был вход)
+    checkSession();
 }
 
-// Запускаем!
+// Запускаем всё один раз
 initApp();
 
-// 2. Привязки функций к кнопкам на странице (только один раз!)
+// Привязываем кнопки к функциям ОДИН РАЗ
 window.checkLogin = checkLogin;
 window.navigateToPage = navigateToPage;
 window.calculateSchedule = calculateSchedule;
