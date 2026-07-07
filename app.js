@@ -48,10 +48,10 @@ let currentRole = "";
 let clientsDatabase = [];
 
 let activeProfileClientId = null;
-let currentClientFilter = "all"; // <--- ОБЯЗАТЕЛЬНО ДОБАВЬ ЭТУ СТРОКУ
 
 // Ежедневная касса
 let dailyCash = {};
+
 // -------------------------
 // LocalStorage
 // -------------------------
@@ -61,42 +61,48 @@ let dailyCash = {};
 // ===============================================
 
 async function saveToLocalStorage() {
+
     // Пока ничего не делаем.
     // Клиенты теперь сохраняются сразу в Firebase.
+
 }
 
 async function loadFromLocalStorage() {
-    // 1. ПРИНУДИТЕЛЬНО очищаем массив перед тем, как что-то загружать.
-    // Это гарантирует, что старых данных в памяти не останется.
+
     clientsDatabase = [];
 
-    try {
-        // 2. Импортируем Firebase модули
-        const { collection, getDocs } = await import(
-            "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"
-        );
+    const { collection, getDocs } = await import(
+        "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"
+    );
 
-        // 3. Получаем данные из коллекции "clients"
-        const snapshot = await getDocs(collection(db, "clients"));
+    const snapshot = await getDocs(
+        collection(db, "clients")
+    );
 
-        // 4. Очищаем массив еще раз для надежности (на случай, если был сбой)
-        clientsDatabase = [];
+    snapshot.forEach(doc => {
 
-        snapshot.forEach(doc => {
-            // Добавляем документ в массив
-            clientsDatabase.push({
-                firebaseId: doc.id,
-                ...doc.data()
-            });
+        clientsDatabase.push({
+
+            firebaseId: doc.id,
+
+            ...doc.data()
+
         });
 
-        console.log("Успешно загружено клиентов:", clientsDatabase.length);
+    });
 
-    } catch (error) {
-        console.error("Ошибка при загрузке данных:", error);
-    }
 }
+// -------------------------
+// Загрузка приложения
+// -------------------------
 
+document.addEventListener("DOMContentLoaded", async () => {
+
+    await loadFromLocalStorage();
+
+    renderClients();
+
+});
 // ===============================================
 // АВТОРИЗАЦИЯ
 // ===============================================
@@ -148,22 +154,18 @@ function checkLogin() {
 // ОТКРЫТИЕ CRM
 // ===============================================
 
-async function openCRM() {
+function openCRM() {
 
-    // 1. Прячем экран входа и показываем интерфейс
     document.getElementById("auth-block").style.display = "none";
+
     document.getElementById("crm-main-interface").style.display = "block";
-    document.getElementById("current-user-display").innerHTML = "👤 " + currentUser;
 
-    // 2. ОДИН РАЗ загружаем данные из Firebase, когда пользователь вошел
-    await loadFromLocalStorage();
-    
-    // 3. Обновляем интерфейс
-    renderClients();
-    renderGeneralReport();
+    document.getElementById("current-user-display").innerHTML =
+        "👤 " + currentUser;
 
-    // 4. Переходим на страницу
     navigateToPage("calculator");
+    
+
 }
 
 // ===============================================
@@ -177,15 +179,11 @@ function handleLogout() {
 
     currentUser = "";
     currentRole = "";
-    
-    // Очищаем данные из памяти при выходе, чтобы не было «призраков»
-    clientsDatabase = []; 
 
     document.getElementById("crm-main-interface").style.display = "none";
+
     document.getElementById("auth-block").style.display = "flex";
-    
-    // Перезагружаем страницу, чтобы полностью сбросить состояние сайта
-    window.location.reload(); 
+
 }
 
 // ===============================================
@@ -209,7 +207,13 @@ function checkSession() {
 
 }
 
+document.addEventListener("DOMContentLoaded", () => {
 
+    loadFromLocalStorage();
+
+    checkSession();
+
+});
 // ===============================================
 // НАВИГАЦИЯ
 // ===============================================
@@ -427,8 +431,6 @@ function calculateSchedule() {
 
 async function registerClient() {
 
-    console.log("REGISTER CLIENT");
-
     const iin = document.getElementById("regIin").value.trim();
     const name = document.getElementById("regName").value.trim();
     const phone = document.getElementById("regPhone").value.trim();
@@ -496,33 +498,33 @@ async function registerClient() {
 
     };
 
-    try {
-        // 1. Сохраняем в Firebase
-        const docRef = await window.addDoc(
-            window.collection(window.db, "clients"),
-            client
-        );
+try {
 
-        console.log("Сохранено!", docRef.id);
+    const docRef = await window.addDoc(
+        window.collection(window.db, "clients"),
+        client
+    );
 
-        // 2. ВАЖНО: Перезагружаем список из базы данных, чтобы массив clientsDatabase 
-        // был актуальным и без дублей
-        await loadFromLocalStorage();
+    client.firebaseId = docRef.id;
 
-        // 3. Обновляем интерфейс
-        renderClients();
-        renderGeneralReport();
-        clearRegistrationForm();
+    clientsDatabase.push(client);
 
-        alert("✅ Займ успешно выдан!");
+    renderClients();
 
-    } catch (error) {
+    renderGeneralReport();
 
-        console.error(error);
+    clearRegistrationForm();
 
-        alert("Ошибка при сохранении: " + error.message);
+    alert("✅ Займ успешно выдан!");
 
-    }
+} catch (error) {
+
+    console.error(error);
+
+    alert(error.message);
+
+}
+
 }
 // ===============================================
 // ОЧИСТКА ФОРМЫ РЕГИСТРАЦИИ
@@ -543,64 +545,70 @@ function clearRegistrationForm() {
 
 }
 // ===============================================
-// СПИСОК КЛИЕНТОВ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+// СПИСОК КЛИЕНТОВ
 // ===============================================
 
-async function renderClients() {
-    const tbody = document.getElementById("clients-table-body");
-    if (!tbody) {
-        console.warn("Элемент clients-table-body не найден на странице!");
-        return;
-    }
+function renderClients() {
 
-    // Если список пуст, пробуем загрузить из Firebase
-    if (clientsDatabase.length === 0) {
-        await loadFromLocalStorage();
-    }
+    const tbody =
+        document.getElementById("clients-table-body");
 
     tbody.innerHTML = "";
-    
-    // Работаем с актуальной базой
-    const data = clientsDatabase || [];
 
-    console.log("Фильтр сейчас:", currentClientFilter);
-    console.log("Всего клиентов в памяти:", data.length);
+    clientsDatabase.forEach((client, index) => {
 
-    const filteredClients = data.filter(client => {
-        if (currentClientFilter === "all" || !currentClientFilter) return true;
-        
-        const status = client.status || "Активный";
-        if (currentClientFilter === "active") return status === "Активный";
-        if (currentClientFilter === "debtor") return status === "Должник";
-        if (currentClientFilter === "closed") return status === "Закрытый";
-        
-        return true; 
-    });
+        tbody.innerHTML += `
 
-    console.log("Клиентов после фильтрации:", filteredClients.length);
+        <tr>
 
-    filteredClients.forEach((client, index) => {
-        // Выбираем самый надежный ID из имеющихся
-        const safeId = client.firebaseId || client.id || "";
-        
-        const row = document.createElement("tr");
-        row.innerHTML = `
             <td>${index + 1}</td>
+
             <td>${client.issueDate || "-"}</td>
+
             <td>${client.name || "-"}</td>
+
             <td>${client.duration || 0} дней</td>
+
             <td>₸ ${Number(client.amount || 0).toLocaleString()}</td>
+
             <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
+
             <td>${client.status || "Активный"}</td>
+
             <td>
-                <button onclick="window.showClientProfile('${safeId}')">
+
+                <button onclick="showClientProfile(${client.id})">
+
                     Открыть
+
                 </button>
+
             </td>
+
+        </tr>
+
         `;
-        tbody.appendChild(row);
+
     });
+
 }
+
+// ===============================================
+// ФИЛЬТР КЛИЕНТОВ
+// ===============================================
+
+let currentClientFilter = "all";
+
+function setClientFilter(filter) {
+
+    currentClientFilter = filter;
+
+    renderClients();
+
+}
+
+window.setClientFilter = setClientFilter;
+
 // ===============================================
 // ОТКРЫТЬ ПРОФИЛЬ КЛИЕНТА
 // ===============================================
@@ -1122,173 +1130,114 @@ function renderGeneralReport() {
 
 }
 // ===============================================
-// ИНИЦИАЛИЗАЦИЯ И ЗАПУСК
+// ЗАПУСК ПРИЛОЖЕНИЯ
 // ===============================================
 
-async function init() {
-    try {
-        console.log("Начинаю загрузку данных...");
-        
-        // 1. ЖДЕМ загрузки данных из Firebase
-        await loadFromLocalStorage();
-        
-        // 2. Инициализируем элементы
-        if (document.getElementById("regDate")) document.getElementById("regDate").valueAsDate = new Date();
-        if (document.getElementById("cashPaymentDate")) document.getElementById("cashPaymentDate").valueAsDate = new Date();
-        
-        loadDailyCash();
-        
-        // 3. ТЕПЕРЬ, когда данные точно есть, рисуем интерфейс
-        console.log("Данные загружены, рисую интерфейс...");
-        renderClients();
-        renderGeneralReport();
-        
-        // 4. Проверка ссылки
-        const urlParams = new URLSearchParams(window.location.search);
-        const clientId = urlParams.get('clientId');
-        if (clientId) {
-            window.showClientProfile(clientId);
+loadFromLocalStorage();
+loadDailyCash();
+
+renderClients();
+renderGeneralReport();
+
+document.getElementById("regDate").valueAsDate = new Date();
+document.getElementById("cashPaymentDate").valueAsDate = new Date();
+function cancelLastPayment() {
+
+    if (activeProfileClientId == null) return;
+
+    const client = clientsDatabase.find(
+        c => c.id === activeProfileClientId
+    );
+
+    if (!client) return;
+
+    for (let i = client.schedule.length - 1; i >= 0; i--) {
+
+        const payment = client.schedule[i];
+
+        if (payment.paid) {
+
+            payment.paid = false;
+
+            client.remaining += payment.amount;
+
+            saveToLocalStorage();
+
+            refreshClientProfile();
+
+            renderGeneralReport();
+
+            alert("↩ Последняя оплата отменена.");
+
+            return;
+
         }
-        
-        console.log("CRM полностью готова к работе");
-    } catch (err) {
-        console.error("Ошибка при старте:", err);
+
     }
+
+    alert("Нет оплаченных дней.");
+
 }
-
-// Запускаем инициализацию
-init();
-
 // ===============================================
-// УПРАВЛЕНИЕ КЛИЕНТАМИ (ПОЛНАЯ ЗАМЕНА)
+// Делаем функции доступными из HTML
 // ===============================================
 
-window.showClientProfile = function(clientId) {
-    console.log("--- ОТЛАДКА: Попытка открыть профиль ---");
-    console.log("Запрошенный ID:", clientId);
-    console.log("Массив клиентов сейчас:", clientsDatabase);
+window.checkLogin = checkLogin;
+window.navigateToPage = navigateToPage;
+window.calculateSchedule = calculateSchedule;
+window.registerClient = registerClient;
+window.showClientProfile = showClientProfile;
+window.paySeveralDays = paySeveralDays;
+window.updateMultiPaymentAmount = updateMultiPaymentAmount;
+window.cancelLastPayment = cancelLastPayment;
+window.renderDailyReport = renderDailyReport;
+window.toggleSidebar = toggleSidebar;
+// ===============================================
+// УДАЛИТЬ КЛИЕНТА
+// ===============================================
 
-    // Приводим к строке для точного сравнения
-    const idToFind = String(clientId).trim();
-    
-    // Ищем клиента в массиве
-    const client = clientsDatabase.find(c => {
-        const idMatches = String(c.id || "").trim() === idToFind;
-        const firebaseMatches = String(c.firebaseId || "").trim() === idToFind;
-        return idMatches || firebaseMatches;
-    });
-    
+async function deleteCurrentClient() {
+
+    if (activeProfileClientId == null) return;
+
+    const client = clientsDatabase.find(
+        c => String(c.id) === String(activeProfileClientId)
+    );
+
     if (!client) {
-        console.error("ОШИБКА: Клиент с ID", idToFind, "НЕ НАЙДЕН в базе!");
-        alert("Клиент не найден. Попробуйте перезагрузить страницу.");
+        alert("Клиент не найден.");
         return;
     }
 
-    console.log("УСПЕХ: Клиент найден:", client.name);
-    activeProfileClientId = client.firebaseId || client.id;
+    if (!confirm("Удалить этот займ?")) return;
 
-    // Заполняем данные профиля
-    document.getElementById("profName").textContent = client.name || "";
-    document.getElementById("profIin").textContent = client.iin || "";
-    document.getElementById("profPhone").textContent = client.phone || "";
-    document.getElementById("profAddress").textContent = client.address || "";
-    document.getElementById("profDate").textContent = client.issueDate || "";
-    
-    // Форматирование сумм
-    document.getElementById("profAmount").textContent = "₸ " + Number(client.amount || 0).toLocaleString();
-    document.getElementById("profTotalReturn").textContent = "₸ " + Number(client.totalReturn || 0).toLocaleString();
-    document.getElementById("profRemaining").textContent = "₸ " + Number(client.remaining || 0).toLocaleString();
-
-    // Если есть график платежей - отрисовываем его
-    if (typeof renderClientSchedule === "function") {
-        renderClientSchedule(client);
+    if (client.firebaseId) {
+        await window.deleteDoc(
+            window.doc(window.db, "clients", client.firebaseId)
+        );
     }
-    
-    // Переходим на страницу профиля
-    window.navigateToPage("client-profile");
-};
 
-// ===============================================
-// ФИЛЬТР КЛИЕНТОВ (ИСПРАВЛЕННЫЙ)
-// ===============================================
+    clientsDatabase = clientsDatabase.filter(
+        c => String(c.id) !== String(activeProfileClientId)
+    );
 
-window.setClientFilter = function(filter) {
-    console.log("Установлен фильтр:", filter);
-    
-    // Присваиваем значение глобальной переменной
-    currentClientFilter = filter; 
+    renderClients();
+    renderGeneralReport();
 
-    // Вызываем функцию отрисовки, если она существует
-    if (typeof renderClients === "function") {
-        renderClients();
-    }
-};
-// ===============================================
-// РАБОТА СО ССЫЛКАМИ (ДЛЯ EXCEL)
-// ===============================================
+    navigateToPage("client-list");
 
-window.copyClientLink = function() {
-    if (activeProfileClientId == null) return;
-    const baseUrl = window.location.origin + window.location.pathname;
-    const link = `${baseUrl}?clientId=${activeProfileClientId}`;
-    navigator.clipboard.writeText(link).then(() => {
-        alert("✅ Ссылка скопирована!");
-    });
-};
+    alert("✅ Займ удалён.");
 
-// ===============================================
-// РЕГИСТРАЦИЯ ФУНКЦИЙ ДЛЯ КНОПОК
-// ===============================================
+}
+window.deleteCurrentClient = deleteCurrentClient;
 
-window.setClientFilter = function(filter) {
-    console.log("Установлен фильтр:", filter);
-    
-    // Перевод названий кнопок в значения фильтра
-    if (filter === "Все") currentClientFilter = "all";
-    else if (filter === "Активный") currentClientFilter = "active";
-    else if (filter === "Должник") currentClientFilter = "debtor";
-    else if (filter === "Неактивный") currentClientFilter = "closed";
-    else currentClientFilter = filter;
-
-    if (typeof renderClients === "function") {
-        renderClients();
-    }
-};
-
-// ===============================================
-// РЕГИСТРАЦИЯ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ И ФУНКЦИЙ
-// ===============================================
-
-// Привязываем фильтр к окну, чтобы HTML его видел
-window.currentClientFilter = "all"; 
-
-window.setClientFilter = function(filter) {
-    console.log("Установлен фильтр:", filter);
-    
-    // Перевод названий кнопок в значения
-    if (filter === "Все") window.currentClientFilter = "all";
-    else if (filter === "Активный") window.currentClientFilter = "active";
-    else if (filter === "Должник") window.currentClientFilter = "debtor";
-    else if (filter === "Неактивный") window.currentClientFilter = "closed";
-    else window.currentClientFilter = filter;
-
-    if (typeof renderClients === "function") {
-        renderClients();
-    }
-};
-
-// Привязываем все функции к window
-window.showClientProfile = showClientProfile;
-window.navigateToPage = navigateToPage;
+window.deleteCurrentClient = deleteCurrentClient;
 window.registerClient = registerClient;
+window.calculateSchedule = calculateSchedule;
+window.navigateToPage = navigateToPage;
+window.checkLogin = checkLogin;
 window.paySeveralDays = paySeveralDays;
 window.cancelLastPayment = cancelLastPayment;
-window.deleteCurrentClient = deleteCurrentClient;
-window.checkLogin = checkLogin;
-window.toggleSidebar = toggleSidebar;
-window.renderDailyReport = renderDailyReport;
-window.calculateSchedule = calculateSchedule;
-window.copyClientLink = copyClientLink;
 window.updateMultiPaymentAmount = updateMultiPaymentAmount;
-
-console.log("Глобальные переменные и функции успешно привязаны к window!");
+window.renderDailyReport = renderDailyReport;
+window.setClientFilter = setClientFilter;
