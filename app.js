@@ -1121,7 +1121,9 @@ function renderGeneralReport() {
 
 async function init() {
     try {
-        // 1. Грузим данные
+        console.log("Начинаю загрузку данных...");
+        
+        // 1. ЖДЕМ загрузки данных из Firebase
         await loadFromLocalStorage();
         
         // 2. Инициализируем элементы
@@ -1129,23 +1131,26 @@ async function init() {
         if (document.getElementById("cashPaymentDate")) document.getElementById("cashPaymentDate").valueAsDate = new Date();
         
         loadDailyCash();
+        
+        // 3. ТЕПЕРЬ, когда данные точно есть, рисуем интерфейс
+        console.log("Данные загружены, рисую интерфейс...");
         renderClients();
         renderGeneralReport();
         
-        // 3. Проверка ссылки для открытия профиля
+        // 4. Проверка ссылки
         const urlParams = new URLSearchParams(window.location.search);
         const clientId = urlParams.get('clientId');
         if (clientId) {
-            showClientProfile(clientId);
+            window.showClientProfile(clientId);
         }
         
-        console.log("CRM готова к работе");
+        console.log("CRM полностью готова к работе");
     } catch (err) {
         console.error("Ошибка при старте:", err);
     }
 }
 
-// Запускаем всё один раз
+// Запускаем инициализацию
 init();
 
 // ===============================================
