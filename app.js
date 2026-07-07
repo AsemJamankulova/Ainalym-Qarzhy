@@ -61,36 +61,40 @@ let dailyCash = {};
 // ===============================================
 
 async function saveToLocalStorage() {
-
     // Пока ничего не делаем.
     // Клиенты теперь сохраняются сразу в Firebase.
-
 }
 
 async function loadFromLocalStorage() {
-
+    // 1. ПРИНУДИТЕЛЬНО очищаем массив перед тем, как что-то загружать.
+    // Это гарантирует, что старых данных в памяти не останется.
     clientsDatabase = [];
 
-    const { collection, getDocs } = await import(
-        "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"
-    );
+    try {
+        // 2. Импортируем Firebase модули
+        const { collection, getDocs } = await import(
+            "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js"
+        );
 
-    const snapshot = await getDocs(
-        collection(db, "clients")
-    );
+        // 3. Получаем данные из коллекции "clients"
+        const snapshot = await getDocs(collection(db, "clients"));
 
-    snapshot.forEach(doc => {
+        // 4. Очищаем массив еще раз для надежности (на случай, если был сбой)
+        clientsDatabase = [];
 
-        clientsDatabase.push({
-
-            firebaseId: doc.id,
-
-            ...doc.data()
-
+        snapshot.forEach(doc => {
+            // Добавляем документ в массив
+            clientsDatabase.push({
+                firebaseId: doc.id,
+                ...doc.data()
+            });
         });
 
-    });
+        console.log("Успешно загружено клиентов:", clientsDatabase.length);
 
+    } catch (error) {
+        console.error("Ошибка при загрузке данных:", error);
+    }
 }
 
 // ===============================================
@@ -144,18 +148,22 @@ function checkLogin() {
 // ОТКРЫТИЕ CRM
 // ===============================================
 
-function openCRM() {
+async function openCRM() {
 
+    // 1. Прячем экран входа и показываем интерфейс
     document.getElementById("auth-block").style.display = "none";
-
     document.getElementById("crm-main-interface").style.display = "block";
+    document.getElementById("current-user-display").innerHTML = "👤 " + currentUser;
 
-    document.getElementById("current-user-display").innerHTML =
-        "👤 " + currentUser;
-
-    navigateToPage("calculator");
+    // 2. ОДИН РАЗ загружаем данные из Firebase, когда пользователь вошел
+    await loadFromLocalStorage();
     
+    // 3. Обновляем интерфейс
+    renderClients();
+    renderGeneralReport();
 
+    // 4. Переходим на страницу
+    navigateToPage("calculator");
 }
 
 // ===============================================
@@ -169,11 +177,15 @@ function handleLogout() {
 
     currentUser = "";
     currentRole = "";
+    
+    // Очищаем данные из памяти при выходе, чтобы не было «призраков»
+    clientsDatabase = []; 
 
     document.getElementById("crm-main-interface").style.display = "none";
-
     document.getElementById("auth-block").style.display = "flex";
-
+    
+    // Перезагружаем страницу, чтобы полностью сбросить состояние сайта
+    window.location.reload(); 
 }
 
 // ===============================================
