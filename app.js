@@ -416,12 +416,11 @@ function calculateSchedule() {
 
 }
 // ===============================================
-// РЕГИСТРАЦИЯ КЛИЕНТА
+// ИСПРАВЛЕННАЯ РЕГИСТРАЦИЯ КЛИЕНТА
 // ===============================================
 
 async function registerClient() {
-
-    console.log("REGISTER CLIENT");
+    console.log("Начинаю регистрацию...");
 
     const iin = document.getElementById("regIin").value.trim();
     const name = document.getElementById("regName").value.trim();
@@ -431,91 +430,51 @@ async function registerClient() {
     const amount = Number(document.getElementById("regAmount").value);
     const duration = Number(document.getElementById("regDuration").value);
 
-    if (
-        iin === "" ||
-        name === "" ||
-        phone === "" ||
-        address === "" ||
-        issueDate === "" ||
-        amount <= 0
-    ) {
-        alert("Заполните все поля.");
+    // 1. Проверка полей
+    if (!iin || !name || !phone || !address || !issueDate || amount <= 0) {
+        alert("Заполните все поля корректно.");
         return;
     }
 
+    // 2. Расчеты
     const percent = getLoanPercent(duration);
-
-    const totalReturn =
-        Math.round(amount * (1 + percent / 100));
-
-    const workingDays =
-        getWorkingPayments(issueDate, duration);
-
-    const dailyPayment =
-        roundUp100(totalReturn / workingDays);
+    const totalReturn = Math.round(amount * (1 + percent / 100));
+    const workingDays = getWorkingPayments(issueDate, duration);
+    const dailyPayment = roundUp100(totalReturn / workingDays);
 
     const client = {
-
-        id: Date.now(),
-
-        iin,
-        name,
-        phone,
-        address,
-
-        issueDate,
-
-        amount,
-        duration,
-
-        percent,
-
-        totalReturn,
-
-        dailyPayment,
-
-        workingDays,
-
+        id: Date.now(), // Временный ID
+        iin, name, phone, address, issueDate,
+        amount, duration, percent, totalReturn,
+        dailyPayment, workingDays,
         remaining: totalReturn,
-
         status: "Активный",
-
         history: [],
-
-        schedule: generateSchedule(
-            issueDate,
-            duration,
-            dailyPayment
-        )
-
+        schedule: generateSchedule(issueDate, duration, dailyPayment)
     };
 
     try {
-        // 1. Сохраняем в Firebase
-        const docRef = await window.addDoc(
-            window.collection(window.db, "clients"),
-            client
-        );
+        // 3. Сохраняем в Firebase
+        // Мы НЕ делаем push в массив вручную, чтобы избежать дублей
+        await window.addDoc(window.collection(window.db, "clients"), client);
+        
+        console.log("Клиент успешно сохранен в Firebase");
 
-        console.log("Сохранено!", docRef.id);
+        // 4. Очищаем форму СРАЗУ, чтобы пользователь не нажал кнопку дважды
+        clearRegistrationForm();
 
-        // 2. ВАЖНО: Перезагружаем список из базы данных, чтобы массив clientsDatabase 
-        // был актуальным и без дублей
+        // 5. Полная перезагрузка данных из базы
         await loadFromLocalStorage();
 
-        // 3. Обновляем интерфейс
+        // 6. Обновляем интерфейс
         renderClients();
         renderGeneralReport();
-        clearRegistrationForm();
 
         alert("✅ Займ успешно выдан!");
 
     } catch (error) {
-
-        console.error(error);
-
+        console.error("Ошибка:", error);
         alert("Ошибка при сохранении: " + error.message);
-
     }
 }
 // ===============================================
