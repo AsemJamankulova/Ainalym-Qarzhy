@@ -48,6 +48,7 @@ let currentRole = "";
 let clientsDatabase = [];
 
 let activeProfileClientId = null;
+let currentClientFilter = "all"; // Добавляем эту переменную
 
 // Ежедневная касса
 let dailyCash = {};
@@ -1236,8 +1237,44 @@ window.copyClientLink = function() {
     });
 };
 
-// Делаем функции доступными для HTML-атрибутов onclick
-window.setClientFilter = setClientFilter;
+// ===============================================
+// РЕГИСТРАЦИЯ ФУНКЦИЙ ДЛЯ КНОПОК
+// ===============================================
+
+window.setClientFilter = function(filter) {
+    console.log("Установлен фильтр:", filter);
+    
+    // Перевод названий кнопок в значения фильтра
+    if (filter === "Все") currentClientFilter = "all";
+    else if (filter === "Активный") currentClientFilter = "active";
+    else if (filter === "Должник") currentClientFilter = "debtor";
+    else if (filter === "Неактивный") currentClientFilter = "closed";
+    else currentClientFilter = filter;
+
+    if (typeof renderClients === "function") {
+        renderClients();
+    }
+};
+
+// ===============================================
+// РЕГИСТРАЦИЯ ФУНКЦИЙ ДЛЯ КНОПОК
+// ===============================================
+
+window.setClientFilter = function(filter) {
+    console.log("Установлен фильтр:", filter);
+    
+    // Перевод названий кнопок в значения фильтра
+    if (filter === "Все") currentClientFilter = "all";
+    else if (filter === "Активный") currentClientFilter = "active";
+    else if (filter === "Должник") currentClientFilter = "debtor";
+    else if (filter === "Неактивный") currentClientFilter = "closed";
+    else currentClientFilter = filter;
+
+    if (typeof renderClients === "function") {
+        renderClients();
+    }
+};
+
 window.showClientProfile = showClientProfile;
 window.navigateToPage = navigateToPage;
 window.registerClient = registerClient;
