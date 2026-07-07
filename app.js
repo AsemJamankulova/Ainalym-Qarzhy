@@ -547,65 +547,41 @@ function clearRegistrationForm() {
 // ===============================================
 
 function renderClients() {
+    const tbody = document.getElementById("clients-table-body");
+    if (!tbody) return; // Чтобы сайт не падал, если таблицы нет на странице
 
-    const tbody =
-        document.getElementById("clients-table-body");
+    tbody.innerHTML = ""; // Очищаем таблицу
 
-    tbody.innerHTML = "";
+    // Используем window.clientsDatabase, чтобы точно достать данные
+    const data = window.clientsDatabase || [];
 
-    clientsDatabase.forEach((client, index) => {
-
-        tbody.innerHTML += `
-
-        <tr>
-
-            <td>${index + 1}</td>
-
-            <td>${client.issueDate || "-"}</td>
-
-            <td>${client.name || "-"}</td>
-
-            <td>${client.duration || 0} дней</td>
-
-            <td>₸ ${Number(client.amount || 0).toLocaleString()}</td>
-
-            <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
-
-            <td>${client.status || "Активный"}</td>
-
-            <td>
-
-                <button onclick="showClientProfile(${client.id})">
-
-                    Открыть
-
-                </button>
-
-            </td>
-
-        </tr>
-
-        `;
-
+    // Фильтруем данные перед отрисовкой
+    const filteredClients = data.filter(client => {
+        if (currentClientFilter === "active") return client.status === "Активный";
+        if (currentClientFilter === "debtor") return client.status === "Должник";
+        if (currentClientFilter === "closed") return client.status === "Закрытый";
+        return true; // Если "all" или что-то другое - показываем всех
     });
 
+    filteredClients.forEach((client, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${client.issueDate || "-"}</td>
+            <td>${client.name || "-"}</td>
+            <td>${client.duration || 0} дней</td>
+            <td>₸ ${Number(client.amount || 0).toLocaleString()}</td>
+            <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
+            <td>${client.status || "Активный"}</td>
+            <td>
+                <button onclick="showClientProfile('${client.id}')">
+                    Открыть
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
 }
-
-// ===============================================
-// ФИЛЬТР КЛИЕНТОВ
-// ===============================================
-
-let currentClientFilter = "all";
-
-function setClientFilter(filter) {
-
-    currentClientFilter = filter;
-
-    renderClients();
-
-}
-
-window.setClientFilter = setClientFilter;
 
 // ===============================================
 // ОТКРЫТЬ ПРОФИЛЬ КЛИЕНТА
