@@ -1124,34 +1124,43 @@ function cancelLastPayment() {
 }
 
 // ===============================================
-// ФИНАЛЬНЫЙ ЗАПУСК И ПРИВЯЗКИ
+// УДАЛИТЬ КЛИЕНТА
 // ===============================================
 
-async function initApp() {
-    console.log("Запуск CRM...");
-    
-    // Сначала загружаем данные из Firebase
-    await loadFromLocalStorage();
-    loadDailyCash();
-    
-    // Затем рисуем интерфейс
+async function deleteCurrentClient() {
+    if (activeProfileClientId == null) return;
+
+    const client = clientsDatabase.find(
+        c => String(c.id) === String(activeProfileClientId)
+    );
+
+    if (!client) {
+        alert("Клиент не найден.");
+        return;
+    }
+
+    if (!confirm("Удалить этот займ?")) return;
+
+    if (client.firebaseId) {
+        await window.deleteDoc(
+            window.doc(window.db, "clients", client.firebaseId)
+        );
+    }
+
+    clientsDatabase = clientsDatabase.filter(
+        c => String(c.id) !== String(activeProfileClientId)
+    );
+
     renderClients();
     renderGeneralReport();
-    
-    // Устанавливаем текущие даты в поля
-    const regDate = document.getElementById("regDate");
-    const cashDate = document.getElementById("cashPaymentDate");
-    if (regDate) regDate.valueAsDate = new Date();
-    if (cashDate) cashDate.valueAsDate = new Date();
-    
-    // Проверяем сессию пользователя (если был вход)
-    checkSession();
+    navigateToPage("client-list");
+    alert("✅ Займ удалён.");
 }
 
-// Запускаем всё один раз
-initApp();
+// ===============================================
+// ПРИВЯЗКА ФУНКЦИЙ К КНОПКАМ (ТОЛЬКО ОДИН РАЗ)
+// ===============================================
 
-// Привязываем кнопки к функциям ОДИН РАЗ
 window.checkLogin = checkLogin;
 window.navigateToPage = navigateToPage;
 window.calculateSchedule = calculateSchedule;
