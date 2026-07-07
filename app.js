@@ -92,17 +92,7 @@ async function loadFromLocalStorage() {
     });
 
 }
-// -------------------------
-// Загрузка приложения
-// -------------------------
 
-document.addEventListener("DOMContentLoaded", async () => {
-
-    await loadFromLocalStorage();
-
-    renderClients();
-
-});
 // ===============================================
 // АВТОРИЗАЦИЯ
 // ===============================================
