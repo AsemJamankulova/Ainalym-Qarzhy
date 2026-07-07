@@ -1236,15 +1236,17 @@ window.copyClientLink = function() {
     });
 };
 
-// ===============================================
-// РЕГИСТРАЦИЯ ОСТАЛЬНЫХ ФУНКЦИЙ ДЛЯ HTML
-// ===============================================
-
-if (typeof checkLogin === "function") window.checkLogin = checkLogin;
-if (typeof navigateToPage === "function") window.navigateToPage = navigateToPage;
-if (typeof calculateSchedule === "function") window.calculateSchedule = calculateSchedule;
-if (typeof registerClient === "function") window.registerClient = registerClient;
-if (typeof paySeveralDays === "function") window.paySeveralDays = paySeveralDays;
-if (typeof updateMultiPaymentAmount === "function") window.updateMultiPaymentAmount = updateMultiPaymentAmount;
-if (typeof renderDailyReport === "function") window.renderDailyReport = renderDailyReport;
-if (typeof toggleSidebar === "function") window.toggleSidebar = toggleSidebar;
+// Делаем функции доступными для HTML-атрибутов onclick
+window.setClientFilter = setClientFilter;
+window.showClientProfile = showClientProfile;
+window.navigateToPage = navigateToPage;
+window.registerClient = registerClient;
+window.paySeveralDays = paySeveralDays;
+window.cancelLastPayment = cancelLastPayment;
+window.deleteCurrentClient = deleteCurrentClient;
+window.checkLogin = checkLogin;
+window.toggleSidebar = toggleSidebar;
+window.renderDailyReport = renderDailyReport;
+window.calculateSchedule = calculateSchedule;
+window.copyClientLink = copyClientLink;
+window.updateMultiPaymentAmount = updateMultiPaymentAmount;
