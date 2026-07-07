@@ -1124,39 +1124,52 @@ function cancelLastPayment() {
 }
 
 // ===============================================
-// УДАЛИТЬ КЛИЕНТА
+// УДАЛИТЬ КЛИЕНТА (ИСПРАВЛЕННЫЙ ВАРИАНТ)
 // ===============================================
 
-async function deleteCurrentClient() {
-    if (activeProfileClientId == null) return;
+window.deleteCurrentClient = async function() {
+    console.log("Попытка удаления. ID клиента:", activeProfileClientId);
+
+    if (activeProfileClientId == null) {
+        alert("Клиент не выбран.");
+        return;
+    }
 
     const client = clientsDatabase.find(
         c => String(c.id) === String(activeProfileClientId)
     );
 
     if (!client) {
-        alert("Клиент не найден.");
+        alert("Клиент не найден в базе.");
         return;
     }
 
     if (!confirm("Удалить этот займ?")) return;
 
-    if (client.firebaseId) {
-        await window.deleteDoc(
-            window.doc(window.db, "clients", client.firebaseId)
+    try {
+        // Удаляем из Firebase
+        if (client.firebaseId) {
+            await window.deleteDoc(
+                window.doc(window.db, "clients", client.firebaseId)
+            );
+        }
+
+        // Удаляем из массива
+        clientsDatabase = clientsDatabase.filter(
+            c => String(c.id) !== String(activeProfileClientId)
         );
+
+        // Обновляем всё на экране
+        renderClients();
+        renderGeneralReport();
+        navigateToPage("client-list");
+
+        alert("✅ Займ удалён.");
+    } catch (error) {
+        console.error("Ошибка удаления:", error);
+        alert("Ошибка при удалении: " + error.message);
     }
-
-    clientsDatabase = clientsDatabase.filter(
-        c => String(c.id) !== String(activeProfileClientId)
-    );
-
-    renderClients();
-    renderGeneralReport();
-    navigateToPage("client-list");
-    alert("✅ Займ удалён.");
-}
-
+};
 // ===============================================
 // ПРИВЯЗКА ФУНКЦИЙ К КНОПКАМ (ТОЛЬКО ОДИН РАЗ)
 // ===============================================
