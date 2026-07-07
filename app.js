@@ -1242,3 +1242,47 @@ window.cancelLastPayment = cancelLastPayment;
 window.updateMultiPaymentAmount = updateMultiPaymentAmount;
 window.renderDailyReport = renderDailyReport;
 window.setClientFilter = setClientFilter;
+
+// ===============================================
+// РАБОТА СО ССЫЛКАМИ (ДЛЯ EXCEL)
+// ===============================================
+
+// 1. Копирование ссылки в буфер обмена
+function copyClientLink() {
+    if (activeProfileClientId == null) return;
+
+    // Генерируем ссылку (ссылаемся на текущий адрес сайта + ID клиента)
+    const baseUrl = window.location.origin + window.location.pathname;
+    const link = `${baseUrl}?clientId=${activeProfileClientId}`;
+
+    // Копируем
+    navigator.clipboard.writeText(link).then(() => {
+        alert("✅ Ссылка скопирована! Вставляй в Excel.");
+    }).catch(err => {
+        alert("Ошибка при копировании: " + err);
+    });
+}
+
+// 2. Автоматическое открытие профиля, если в ссылке есть clientId
+async function checkUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const clientId = urlParams.get('clientId');
+
+    if (clientId) {
+        // Ждем загрузки данных из базы, чтобы ID нашлись
+        await loadFromLocalStorage();
+        
+        // Открываем профиль
+        showClientProfile(clientId);
+        
+        // Показываем интерфейс (если он был скрыт)
+        document.getElementById("auth-block").style.display = "none";
+        document.getElementById("crm-main-interface").style.display = "block";
+    }
+}
+
+// 3. Регистрируем новую функцию, чтобы HTML её видел
+window.copyClientLink = copyClientLink;
+
+// 4. Запускаем проверку ссылки сразу при загрузке
+checkUrlParams();
