@@ -548,20 +548,29 @@ function clearRegistrationForm() {
 
 function renderClients() {
     const tbody = document.getElementById("clients-table-body");
-    if (!tbody) return; // Чтобы сайт не падал, если таблицы нет на странице
+    if (!tbody) return;
 
-    tbody.innerHTML = ""; // Очищаем таблицу
-
-    // Используем window.clientsDatabase, чтобы точно достать данные
+    tbody.innerHTML = ""; 
     const data = window.clientsDatabase || [];
 
-    // Фильтруем данные перед отрисовкой
+    // Добавим отладку, чтобы увидеть, что происходит
+    console.log("Фильтр сейчас:", currentClientFilter);
+    console.log("Всего клиентов в памяти:", data.length);
+
     const filteredClients = data.filter(client => {
-        if (currentClientFilter === "active") return client.status === "Активный";
-        if (currentClientFilter === "debtor") return client.status === "Должник";
-        if (currentClientFilter === "closed") return client.status === "Закрытый";
-        return true; // Если "all" или что-то другое - показываем всех
+        // Если фильтр "all" - показываем всех
+        if (currentClientFilter === "all" || !currentClientFilter) return true;
+        
+        // Сравниваем статусы
+        const status = client.status || "Активный";
+        if (currentClientFilter === "active") return status === "Активный";
+        if (currentClientFilter === "debtor") return status === "Должник";
+        if (currentClientFilter === "closed") return status === "Закрытый";
+        
+        return true; 
     });
+
+    console.log("Клиентов после фильтрации:", filteredClients.length);
 
     filteredClients.forEach((client, index) => {
         const row = document.createElement("tr");
@@ -574,7 +583,7 @@ function renderClients() {
             <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
             <td>${client.status || "Активный"}</td>
             <td>
-                <button onclick="showClientProfile('${client.id}')">
+                <button onclick="window.showClientProfile('${client.firebaseId}')">
                     Открыть
                 </button>
             </td>
@@ -582,7 +591,6 @@ function renderClients() {
         tbody.appendChild(row);
     });
 }
-
 // ===============================================
 // ОТКРЫТЬ ПРОФИЛЬ КЛИЕНТА
 // ===============================================
