@@ -1228,3 +1228,13 @@ window.renderDailyReport = renderDailyReport;
 window.toggleSidebar = toggleSidebar;
 window.deleteCurrentClient = deleteCurrentClient;
 window.setClientFilter = setClientFilter;
+// Делаем функции доступными для HTML-атрибутов onclick
+window.setClientFilter = setClientFilter;
+window.showClientProfile = showClientProfile;
+window.registerClient = registerClient;
+window.paySeveralDays = paySeveralDays;
+window.cancelLastPayment = cancelLastPayment;
+window.deleteCurrentClient = deleteCurrentClient;
+window.navigateToPage = navigateToPage;
+window.checkLogin = checkLogin;
+// Добавь сюда любые другие функции, которые ты вызываешь через onclick в HTML
