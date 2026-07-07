@@ -543,21 +543,24 @@ function clearRegistrationForm() {
 
 }
 // ===============================================
-// СПИСОК КЛИЕНТОВ
+// СПИСОК КЛИЕНТОВ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 // ===============================================
 
-async function renderClients() { // Добавляем async
+async function renderClients() {
     const tbody = document.getElementById("clients-table-body");
-    if (!tbody) return;
+    if (!tbody) {
+        console.warn("Элемент clients-table-body не найден на странице!");
+        return;
+    }
 
-    // ЕСЛИ МАССИВ ПУСТ, ПОПЫТАЕМСЯ ЕЩЕ РАЗ ЗАГРУЗИТЬ (на всякий случай)
+    // Если список пуст, пробуем загрузить из Firebase
     if (clientsDatabase.length === 0) {
         await loadFromLocalStorage();
     }
 
     tbody.innerHTML = "";
     
-    // Используем window.clientsDatabase или просто clientsDatabase
+    // Работаем с актуальной базой
     const data = clientsDatabase || [];
 
     console.log("Фильтр сейчас:", currentClientFilter);
@@ -577,6 +580,9 @@ async function renderClients() { // Добавляем async
     console.log("Клиентов после фильтрации:", filteredClients.length);
 
     filteredClients.forEach((client, index) => {
+        // Выбираем самый надежный ID из имеющихся
+        const safeId = client.firebaseId || client.id || "";
+        
         const row = document.createElement("tr");
         row.innerHTML = `
             <td>${index + 1}</td>
@@ -587,7 +593,7 @@ async function renderClients() { // Добавляем async
             <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
             <td>${client.status || "Активный"}</td>
             <td>
-                <button onclick="window.showClientProfile('${client.firebaseId || client.id}')">
+                <button onclick="window.showClientProfile('${safeId}')">
                     Открыть
                 </button>
             </td>
