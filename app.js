@@ -19,21 +19,59 @@ import {
 const USERS = {
 
     admin: {
-        login: "admin",
-        password: "12345",
-        role: "admin"
+        login: "saule",
+        password: "100110",
+        role: "admin",
+        fullName: "Садвакас Сауле Турлыбековна"
     },
 
-    manager: {
-        login: "manager",
-        password: "12345",
-        role: "manager"
+    manager1: {
+        login: "janibek",
+        password: "291295",
+        role: "manager",
+        fullName: "Аманжолов Жанибек "
     },
 
-    cashier: {
-        login: "cashier",
+    manager2: {
+        login: "manager2",
         password: "12345",
-        role: "cashier"
+        role: "manager",
+        fullName: "Менеджер 2"
+    },
+
+    cashier1: {
+        login: "cashier1",
+        password: "12345",
+        role: "cashier",
+        fullName: "Кассир 1"
+    },
+
+    cashier2: {
+        login: "cashier2",
+        password: "12345",
+        role: "cashier",
+        fullName: "Кассир 2"
+    },
+
+    cashier3: {
+        login: "cashier3",
+        password: "12345",
+        role: "cashier",
+        fullName: "Кассир 3"
+    },
+
+    cashier4: {
+        login: "cashier4",
+        password: "12345",
+        role: "cashier",
+        fullName: "Кассир 4"
+    },
+
+    cashier5: {
+        login: "cashier5",
+        password: "12345",
+        role: "cashier",
+        fullName: "Кассир 5"
     }
 
 };
@@ -91,8 +129,24 @@ async function loadFromLocalStorage() {
 
     });
 
-}
+    // ==========================
+    // Открыть клиента по ссылке
+    // ==========================
 
+    const params = new URLSearchParams(window.location.search);
+    const clientId = params.get("client");
+
+    if (clientId) {
+
+        const client = clientsDatabase.find(c => c.id == clientId);
+
+        if (client) {
+            openClient(client.id);
+        }
+
+    }
+
+}
 // ===============================================
 // АВТОРИЗАЦИЯ
 // ===============================================
@@ -132,6 +186,16 @@ function checkLogin() {
 
     currentUser = foundUser.login;
     currentRole = foundUser.role;
+
+    // Сохраняем пользователя
+    localStorage.setItem(
+        "ainalym_qarzhy_user",
+        JSON.stringify({
+            login: foundUser.login,
+            role: foundUser.role,
+            fullName: foundUser.fullName
+        })
+    );
 
     localStorage.setItem("crmUser", currentUser);
     localStorage.setItem("crmRole", currentRole);
@@ -202,6 +266,18 @@ function checkSession() {
 // ===============================================
 
 function navigateToPage(pageId) {
+
+    // Проверка прав доступа
+    const currentUser = JSON.parse(localStorage.getItem("ainalym_qarzhy_user"));
+
+    if (
+        pageId === "client-reg" &&
+        currentUser &&
+        currentUser.role === "cashier"
+    ) {
+        alert("❌ У вас нет доступа к регистрации клиентов.");
+        return;
+    }
 
     // Скрываем все страницы
     document.querySelectorAll(".page-section").forEach(page => {
@@ -572,11 +648,11 @@ function openClient(clientId) {
     activeProfileClientId = clientId;
 
     // Обновляем ссылку в браузере
-    window.history.replaceState(
-        {},
-        "",
-        `${window.location.pathname}?client=${clientId}`
-    );
+   window.history.replaceState(
+    {},
+    "",
+    `${window.location.origin}${window.location.pathname}?client=${clientId}`
+);
 
     document.getElementById("profName").textContent = client.name;
     document.getElementById("profIin").textContent = client.iin;
@@ -690,6 +766,12 @@ function showClientProfile(clientId) {
     }
 
     activeProfileClientId = clientId;
+
+    window.history.replaceState(
+    {},
+    "",
+    "#client=" + clientId
+);
 
     document.getElementById("profName").textContent =
         client.name || "";
@@ -916,10 +998,8 @@ async function paySeveralDays() {
         client.remaining = 0;
     }
 
+    // Записываем оплату в ежедневную кассу
     addToDailyCash(cashDate, total);
-
-    console.log(client);
-    console.log(client.firebaseId);
 
     await window.setDoc(
         window.doc(window.db, "clients", client.firebaseId),
@@ -934,6 +1014,14 @@ async function paySeveralDays() {
     showClientProfile(client.id);
 
     updateMultiPaymentAmount();
+
+    // Если сейчас открыта ежедневная касса — сразу обновляем ее
+    const reportDate = document.getElementById("dailyReportDate");
+
+    if (reportDate) {
+        reportDate.value = cashDate;
+        renderDailyReport();
+    }
 
     alert(
         "✅ Принята оплата на сумму ₸ " +
@@ -965,16 +1053,23 @@ function loadDailyCash() {
     }
 
 }
-
 function addToDailyCash(date, amount) {
 
+    const currentUser = JSON.parse(
+        localStorage.getItem("ainalym_qarzhy_user")
+    );
+
+    const cashierName = currentUser.fullName || currentUser.login;
+
     if (!dailyCash[date]) {
-
-        dailyCash[date] = 0;
-
+        dailyCash[date] = {};
     }
 
-    dailyCash[date] += amount;
+    if (!dailyCash[date][cashierName]) {
+        dailyCash[date][cashierName] = 0;
+    }
+
+    dailyCash[date][cashierName] += amount;
 
     saveDailyCash();
 
@@ -982,37 +1077,56 @@ function addToDailyCash(date, amount) {
 
 function renderDailyReport() {
 
-    const date =
-        document.getElementById("dailyReportDate").value;
+    const dateInput = document.getElementById("dailyReportDate");
 
-    // Если дата ещё не выбрана — ничего не показываем
-    if (!date) return;
+    // Если дата не выбрана — автоматически ставим сегодняшнюю
+    if (!dateInput.value) {
+
+        const today = new Date();
+
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+
+        dateInput.value = `${year}-${month}-${day}`;
+
+    }
+
+    const date = dateInput.value;
 
     const tbody =
         document.getElementById("daily-report-table-body");
 
     tbody.innerHTML = "";
 
-    let sum = dailyCash[date] || 0;
+    let total = 0;
 
-    document.getElementById("daily-collected-sum").textContent =
-        "₸ " + sum.toLocaleString();
+    const cashiers = dailyCash[date] || {};
 
-    if (sum > 0) {
+    for (const cashier in cashiers) {
 
-        tbody.innerHTML = `
+        const amount = cashiers[cashier];
+
+        total += amount;
+
+        tbody.innerHTML += `
 
         <tr>
 
             <td>${date}</td>
 
-            <td>₸ ${sum.toLocaleString()}</td>
+            <td>${cashier}</td>
+
+            <td>₸ ${amount.toLocaleString()}</td>
 
         </tr>
 
         `;
 
     }
+
+    document.getElementById("daily-collected-sum").textContent =
+        "₸ " + total.toLocaleString();
 
 }
 // ===============================================
@@ -1024,6 +1138,7 @@ function renderGeneralReport() {
     let issued = 0;
     let collected = 0;
     let remaining = 0;
+    let profit = 0;
 
     let active = 0;
     let closed = 0;
@@ -1040,6 +1155,9 @@ function renderGeneralReport() {
 
         remaining += balance;
 
+        // Доход = только проценты
+        profit += (totalReturn - amount);
+
         if (balance > 0) {
 
             active++;
@@ -1051,8 +1169,6 @@ function renderGeneralReport() {
         }
 
     });
-
-    const profit = collected - issued;
 
     document.getElementById("total-issued").textContent =
         "₸ " + issued.toLocaleString();
