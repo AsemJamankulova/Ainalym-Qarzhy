@@ -553,7 +553,7 @@ function setClientFilter(filter) {
 
 window.setClientFilter = setClientFilter;
 
-// ===============================================
+/// ===============================================
 // ОТКРЫТЬ ПРОФИЛЬ КЛИЕНТА
 // ===============================================
 
@@ -570,6 +570,13 @@ function openClient(clientId) {
     }
 
     activeProfileClientId = clientId;
+
+    // Обновляем ссылку в браузере
+    window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}?client=${clientId}`
+    );
 
     document.getElementById("profName").textContent = client.name;
     document.getElementById("profIin").textContent = client.iin;
@@ -595,19 +602,12 @@ function openClient(clientId) {
     client.schedule.forEach(day => {
 
         tbody.innerHTML += `
-
         <tr>
-
             <td>${day.day}</td>
-
             <td>${day.date}</td>
-
             <td>₸ ${day.amount.toLocaleString()}</td>
-
             <td>${day.paid ? "✅ Оплачено" : "⏳ Не оплачено"}</td>
-
         </tr>
-
         `;
 
     });
@@ -1186,3 +1186,26 @@ window.renderDailyReport = renderDailyReport;
 window.toggleSidebar = toggleSidebar;
 window.deleteCurrentClient = deleteCurrentClient;
 window.setClientFilter = setClientFilter;
+// ===============================================
+// КОПИРОВАТЬ ССЫЛКУ НА КЛИЕНТА
+// ===============================================
+
+function copyClientLink() {
+
+    if (!activeProfileClientId) {
+        alert("Профиль клиента не открыт.");
+        return;
+    }
+
+    const link = window.location.href;
+
+    navigator.clipboard.writeText(link)
+        .then(() => {
+            alert("✅ Ссылка на клиента скопирована!");
+        })
+        .catch(() => {
+            alert("Не удалось скопировать ссылку.");
+        });
+
+}
+window.copyClientLink = copyClientLink;
