@@ -921,12 +921,16 @@ async function payOneDay() {
 
     client.remaining -= payment.amount;
 
-    if (client.remaining < 0) {
+if (client.remaining <= 0) {
 
-        client.remaining = 0;
+    client.remaining = 0;
+    client.status = "closed";
 
-    }
+} else {
 
+    client.status = "active";
+
+}
     // Сохраняем обновлённого клиента в Firebase
     await window.setDoc(
         window.doc(window.db, "clients", client.firebaseId),
