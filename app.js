@@ -615,6 +615,14 @@ function renderClients() {
 
     clientsDatabase.forEach(client => {
 
+        // Закрытые
+        if (
+            currentClientFilter === "closed" &&
+            client.status !== "closed"
+        ) {
+            return;
+        }
+
         // Активные
         if (
             currentClientFilter === "active" &&
@@ -623,10 +631,10 @@ function renderClients() {
             return;
         }
 
-        // Закрытые
+        // Должники
         if (
-            currentClientFilter === "closed" &&
-            client.status !== "closed"
+            currentClientFilter === "overdue" &&
+            !client.overdue
         ) {
             return;
         }
@@ -650,11 +658,9 @@ function renderClients() {
             <td>${client.status === "closed" ? "Закрыт" : "Активный"}</td>
 
             <td>
-
                 <button onclick="showClientProfile(${client.id})">
                     Открыть
                 </button>
-
             </td>
 
         </tr>
@@ -847,6 +853,8 @@ function showClientProfile(clientId) {
 
     document.getElementById("profRemaining").textContent =
         "₸ " + Number(client.remaining || 0).toLocaleString();
+
+    console.log(client);
 
     renderClientSchedule(client);
 
