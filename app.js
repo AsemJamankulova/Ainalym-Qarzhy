@@ -615,26 +615,40 @@ function renderClients() {
 
     clientsDatabase.forEach(client => {
 
+        // Если статус не указан — определяем автоматически
+        if (client.remaining <= 0) {
+            client.status = "closed";
+        } else {
+            client.status = "active";
+        }
+
+        // ===== ФИЛЬТР =====
+
+        // Все
+        if (currentClientFilter === "all") {
+            // показываем всех
+        }
+
+        // Активные
+        else if (
+            currentClientFilter === "active" &&
+            client.status !== "active"
+        ) {
+            return;
+        }
+
         // Закрытые
-        if (
+        else if (
             currentClientFilter === "closed" &&
             client.status !== "closed"
         ) {
             return;
         }
 
-        // Активные
-        if (
-            currentClientFilter === "active" &&
-            client.status === "closed"
-        ) {
-            return;
-        }
-
         // Должники
-        if (
+        else if (
             currentClientFilter === "overdue" &&
-            !client.overdue
+            client.status !== "overdue"
         ) {
             return;
         }
@@ -655,7 +669,13 @@ function renderClients() {
 
             <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
 
-            <td>${client.status === "closed" ? "Закрыт" : "Активный"}</td>
+            <td>${
+                client.status === "closed"
+                    ? "Закрыт"
+                    : client.status === "overdue"
+                    ? "Должник"
+                    : "Активный"
+            }</td>
 
             <td>
                 <button onclick="showClientProfile(${client.id})">
