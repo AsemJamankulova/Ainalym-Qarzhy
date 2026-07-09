@@ -6,6 +6,7 @@ import {
     getDocs,
     addDoc,
     setDoc,
+    updateDoc,
     doc,
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
@@ -36,6 +37,7 @@ window.collection = collection;
 window.getDocs = getDocs;
 window.addDoc = addDoc;
 window.setDoc = setDoc;
+window.updateDoc = updateDoc;
 window.doc = doc;
 window.deleteDoc = deleteDoc;
 
@@ -46,6 +48,7 @@ export {
     getDocs,
     addDoc,
     setDoc,
+    updateDoc,
     doc,
     deleteDoc
 };
