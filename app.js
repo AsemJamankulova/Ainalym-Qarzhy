@@ -1330,7 +1330,7 @@ function cancelLastPayment() {
 // УДАЛИТЬ КЛИЕНТА (ИСПРАВЛЕННЫЙ ВАРИАНТ)
 // ===============================================
 
-window.deleteCurrentClient = async function() {
+window.deleteCurrentClient = async function () {
     console.log("Попытка удаления. ID клиента:", activeProfileClientId);
 
     if (activeProfileClientId == null) {
@@ -1350,31 +1350,66 @@ window.deleteCurrentClient = async function() {
     if (!confirm("Удалить этот займ?")) return;
 
     try {
-        // Удаляем из Firebase
+
         if (client.firebaseId) {
             await window.deleteDoc(
                 window.doc(window.db, "clients", client.firebaseId)
             );
         }
 
-        // Удаляем из массива
         clientsDatabase = clientsDatabase.filter(
             c => String(c.id) !== String(activeProfileClientId)
         );
 
-        // Обновляем всё на экране
         renderClients();
         renderGeneralReport();
         navigateToPage("client-list");
 
         alert("✅ Займ удалён.");
+
     } catch (error) {
+
         console.error("Ошибка удаления:", error);
         alert("Ошибка при удалении: " + error.message);
+
     }
 };
+
 // ===============================================
-// ПРИВЯЗКА ФУНКЦИЙ К КНОПКАМ (ТОЛЬКО ОДИН РАЗ)
+// ПОВТОРНЫЙ ЗАЙМ
+// ===============================================
+
+function issueRepeatLoan() {
+
+    if (activeProfileClientId == null) {
+        alert("Клиент не выбран.");
+        return;
+    }
+
+    const client = clientsDatabase.find(
+        c => String(c.id) === String(activeProfileClientId)
+    );
+
+    if (!client) {
+        alert("Клиент не найден.");
+        return;
+    }
+
+    document.getElementById("regIin").value = client.iin || "";
+    document.getElementById("regName").value = client.name || "";
+    document.getElementById("regPhone").value = client.phone || "";
+    document.getElementById("regAddress").value = client.address || "";
+
+    document.getElementById("regAmount").value = "";
+    document.getElementById("regDuration").value = "14";
+    document.getElementById("regDate").value =
+        new Date().toISOString().split("T")[0];
+
+    navigateToPage("registration");
+}
+
+// ===============================================
+// ПРИВЯЗКА ФУНКЦИЙ К КНОПКАМ
 // ===============================================
 
 window.checkLogin = checkLogin;
@@ -1387,8 +1422,10 @@ window.updateMultiPaymentAmount = updateMultiPaymentAmount;
 window.cancelLastPayment = cancelLastPayment;
 window.renderDailyReport = renderDailyReport;
 window.toggleSidebar = toggleSidebar;
-window.deleteCurrentClient = deleteCurrentClient;
+window.deleteCurrentClient = window.deleteCurrentClient;
 window.setClientFilter = setClientFilter;
+window.issueRepeatLoan = issueRepeatLoan;
+
 // ===============================================
 // КОПИРОВАТЬ ССЫЛКУ НА КЛИЕНТА
 // ===============================================
@@ -1411,4 +1448,5 @@ function copyClientLink() {
         });
 
 }
+
 window.copyClientLink = copyClientLink;
