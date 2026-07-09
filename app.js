@@ -1450,37 +1450,3 @@ function copyClientLink() {
 }
 
 window.copyClientLink = copyClientLink;
-
-// ===============================================
-// ПОВТОРНЫЙ ЗАЙМ
-// ===============================================
-
-function issueRepeatLoan() {
-
-    if (activeProfileClientId == null) {
-        alert("Клиент не выбран.");
-        return;
-    }
-
-    const client = clientsDatabase.find(
-        c => String(c.id) === String(activeProfileClientId)
-    );
-
-    if (!client) {
-        alert("Клиент не найден.");
-        return;
-    }
-
-    navigateToPage("registration");
-
-    document.getElementById("regIin").value = client.iin;
-    document.getElementById("regName").value = client.name;
-    document.getElementById("regPhone").value = client.phone;
-    document.getElementById("regAddress").value = client.address;
-    document.getElementById("regDate").value =
-        new Date().toISOString().split("T")[0];
-
-    document.getElementById("regAmount").focus();
-}
-
-window.issueRepeatLoan = issueRepeatLoan;
