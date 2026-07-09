@@ -4,6 +4,7 @@ import {
     getDocs,
     addDoc,
     setDoc,
+    updateDoc,
     doc,
     deleteDoc
 } from "./firebase.js";
@@ -128,7 +129,32 @@ async function loadFromLocalStorage() {
         });
 
     });
+async function fixClientStatuses() {
 
+    const snapshot = await window.getDocs(
+        window.collection(window.db, "clients")
+    );
+
+    for (const document of snapshot.docs) {
+
+        const data = document.data();
+
+        await window.updateDoc(
+            window.doc(window.db, "clients", document.id),
+            {
+                status: data.remaining <= 0 ? "closed" : "active"
+            }
+        );
+
+    }
+
+    alert("✅ Статусы всех клиентов обновлены!");
+
+    await loadFromLocalStorage();
+
+    renderClients();
+
+}
     // ==========================
     // Открыть клиента по ссылке
     // ==========================
@@ -517,7 +543,7 @@ async function registerClient() {
         amount, duration, percent, totalReturn,
         dailyPayment, workingDays,
         remaining: totalReturn,
-        status: "Активный",
+        status: "active",
         history: [],
         schedule: generateSchedule(issueDate, duration, dailyPayment)
     };
@@ -575,13 +601,31 @@ function renderClients() {
 
     tbody.innerHTML = "";
 
-    clientsDatabase.forEach((client, index) => {
+    let index = 1;
+
+    clientsDatabase.forEach(client => {
+
+        // Активные
+        if (
+            currentClientFilter === "active" &&
+            client.status === "closed"
+        ) {
+            return;
+        }
+
+        // Закрытые
+        if (
+            currentClientFilter === "closed" &&
+            client.status !== "closed"
+        ) {
+            return;
+        }
 
         tbody.innerHTML += `
 
         <tr>
 
-            <td>${index + 1}</td>
+            <td>${index++}</td>
 
             <td>${client.issueDate || "-"}</td>
 
@@ -593,14 +637,12 @@ function renderClients() {
 
             <td>₸ ${Number(client.totalReturn || 0).toLocaleString()}</td>
 
-            <td>${client.status || "Активный"}</td>
+            <td>${client.status === "closed" ? "Закрыт" : "Активный"}</td>
 
             <td>
 
                 <button onclick="showClientProfile(${client.id})">
-
                     Открыть
-
                 </button>
 
             </td>
@@ -612,7 +654,6 @@ function renderClients() {
     });
 
 }
-
 // ===============================================
 // ФИЛЬТР КЛИЕНТОВ
 // ===============================================
@@ -994,9 +1035,13 @@ async function paySeveralDays() {
 
     }
 
-    if (client.remaining < 0) {
-        client.remaining = 0;
-    }
+  if (client.remaining <= 0) {
+
+    client.remaining = 0;
+
+    client.status = "closed";
+
+}
 
     // Записываем оплату в ежедневную кассу
     addToDailyCash(cashDate, total);
