@@ -1405,7 +1405,7 @@ function issueRepeatLoan() {
     document.getElementById("regDate").value =
         new Date().toISOString().split("T")[0];
 
-    navigateToPage("registration");
+    navigateToPage("client-reg");
 }
 
 // ===============================================
