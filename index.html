@@ -174,22 +174,22 @@
                                type="text"
                                placeholder="🔍 Поиск по ФИО или ИИН" />
 
-                        <button onclick="setClientFilter('Все')">
-                            Все
-                        </button>
-
-                        <button onclick="setClientFilter('Активный')">
-                            Активные
-                        </button>
-
-                        <button onclick="setClientFilter('Должник')">
-                            Должники
-                        </button>
-
-                        <button onclick="setClientFilter('Неактивный')">
-    Закрытые
+                        <button onclick="setClientFilter('all')">
+    Все
 </button>
 
+<button onclick="setClientFilter('active')">
+    Активные
+</button>
+
+<button onclick="setClientFilter('overdue')">
+    Должники
+</button>
+
+<button onclick="setClientFilter('closed')">
+    Закрытые
+</button>
+ 
                     </div>
 
                     <table class="crm-table">
