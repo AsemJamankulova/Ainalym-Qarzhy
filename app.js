@@ -120,15 +120,25 @@ async function loadFromLocalStorage() {
 
     snapshot.forEach(doc => {
 
-        clientsDatabase.push({
+    const client = {
 
-            firebaseId: doc.id,
+        firebaseId: doc.id,
 
-            ...doc.data()
+        ...doc.data()
 
-        });
+    };
 
-    });
+    // Если долг закрыт — автоматически меняем статус
+    if ((client.remaining || 0) <= 0) {
+
+        client.remaining = 0;
+        client.status = "closed";
+
+    }
+
+    clientsDatabase.push(client);
+
+});
 async function fixClientStatuses() {
 
     const snapshot = await window.getDocs(
