@@ -34,17 +34,17 @@ const USERS = {
     },
 
     manager2: {
-        login: "manager2",
+        login: "sadvakask",
         password: "12345",
         role: "manager",
-        fullName: "Менеджер 2"
+        fullName: "Садвакас Корганбай ТУрлыбекулы"
     },
 
     cashier1: {
-        login: "cashier1",
+        login: "maks",
         password: "12345",
         role: "cashier",
-        fullName: "Кассир 1"
+        fullName: "Сәрсенбай Мақсат Дәуитұлы"
     },
 
     cashier2: {
