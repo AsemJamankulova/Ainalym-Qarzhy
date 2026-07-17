@@ -137,48 +137,64 @@ async function loadFromLocalStorage() {
     }
 
     clientsDatabase.push(client);
+    console.log("Всего клиентов:", clientsDatabase.length);
 
 });
+
+}
 async function fixClientStatuses() {
 
-    const snapshot = await window.getDocs(
-        window.collection(window.db, "clients")
+    const snapshot = await getDocs(
+        collection(db, "clients")
     );
 
     for (const document of snapshot.docs) {
 
         const data = document.data();
 
-        await window.updateDoc(
-            window.doc(window.db, "clients", document.id),
+        await updateDoc(
+            doc(db, "clients", document.id),
             {
-                status: data.remaining <= 0 ? "closed" : "active"
+                status: Number(data.remaining || 0) <= 0
+                    ? "closed"
+                    : "active"
             }
         );
 
     }
 
-    alert("✅ Статусы всех клиентов обновлены!");
-
     await loadFromLocalStorage();
 
     renderClients();
 
+    alert("✅ Статусы всех клиентов обновлены!");
+
 }
-    // ==========================
-    // Открыть клиента по ссылке
-    // ==========================
 
-    const params = new URLSearchParams(window.location.search);
-    const clientId = params.get("client");
+// ==========================
+// Открыть клиента по ссылке
+// ==========================
 
-    if (clientId) {
+const params = new URLSearchParams(window.location.search);
+const clientId = params.get("client");
 
-        const client = clientsDatabase.find(c => c.id == clientId);
+if (clientId) {
 
-        if (client) {
-            openClient(client.id);
-        }
+    console.log("ID из ссылки:", clientId);
+    console.log("Клиентов в базе:", clientsDatabase.length);
+    console.log(clientsDatabase);
+
+    const client = clientsDatabase.find(
+        c => String(c.id) === String(clientId)
+    );
+
+    if (client) {
+
+        openClient(client.id);
+
+    } else {
+
+        console.log("Клиент не найден");
 
     }
 
@@ -223,13 +239,17 @@ function checkLogin() {
     currentUser = foundUser.login;
     currentRole = foundUser.role;
 
+    // Время окончания сессии (1 час)
+    const sessionExpire = Date.now() + (60 * 60 * 1000);
+
     // Сохраняем пользователя
     localStorage.setItem(
         "ainalym_qarzhy_user",
         JSON.stringify({
             login: foundUser.login,
             role: foundUser.role,
-            fullName: foundUser.fullName
+            fullName: foundUser.fullName,
+            expire: sessionExpire
         })
     );
 
@@ -239,12 +259,11 @@ function checkLogin() {
     openCRM();
 
 }
-
 // ===============================================
 // ОТКРЫТИЕ CRM
 // ===============================================
 
-function openCRM() {
+async function openCRM() {
 
     document.getElementById("auth-block").style.display = "none";
 
@@ -253,11 +272,27 @@ function openCRM() {
     document.getElementById("current-user-display").innerHTML =
         "👤 " + currentUser;
 
-    navigateToPage("calculator");
-    
+    // Сначала загружаем клиентов
+    await loadFromLocalStorage();
+
+    renderClients();
+    renderGeneralReport();
+
+    // Потом открываем клиента по ссылке
+    const params = new URLSearchParams(window.location.search);
+    const clientId = params.get("client");
+
+    if (clientId) {
+
+        showClientProfile(clientId);
+
+    } else {
+
+        navigateToPage("calculator");
+
+    }
 
 }
-
 // ===============================================
 // ВЫХОД
 // ===============================================
@@ -266,6 +301,7 @@ function handleLogout() {
 
     localStorage.removeItem("crmUser");
     localStorage.removeItem("crmRole");
+    localStorage.removeItem("ainalym_qarzhy_user");
 
     currentUser = "";
     currentRole = "";
@@ -280,20 +316,40 @@ function handleLogout() {
 // ПРОВЕРКА СЕССИИ
 // ===============================================
 
-function checkSession() {
+async function checkSession() {
 
-    const user =
-        localStorage.getItem("crmUser");
+    const savedUser = JSON.parse(
+        localStorage.getItem("ainalym_qarzhy_user")
+    );
 
-    const role =
-        localStorage.getItem("crmRole");
+    if (!savedUser) return;
 
-    if (!user) return;
+    // Проверяем, не истекла ли сессия
+    if (Date.now() > savedUser.expire) {
 
-    currentUser = user;
-    currentRole = role;
+        localStorage.removeItem("ainalym_qarzhy_user");
+        localStorage.removeItem("crmUser");
+        localStorage.removeItem("crmRole");
 
-    openCRM();
+        return;
+
+    }
+
+    currentUser = savedUser.login;
+    currentRole = savedUser.role;
+
+    // Продлеваем сессию ещё на 1 час с момента последнего открытия
+    savedUser.expire = Date.now() + (60 * 60 * 1000);
+
+    localStorage.setItem(
+        "ainalym_qarzhy_user",
+        JSON.stringify(savedUser)
+    );
+
+    localStorage.setItem("crmUser", currentUser);
+    localStorage.setItem("crmRole", currentRole);
+
+   await openCRM();
 
 }
 
@@ -606,8 +662,7 @@ function clearRegistrationForm() {
 
 function renderClients() {
 
-    const tbody =
-        document.getElementById("clients-table-body");
+    const tbody = document.getElementById("clients-table-body");
 
     tbody.innerHTML = "";
 
@@ -622,14 +677,22 @@ function renderClients() {
             client.status = "active";
         }
 
+        // ===== ПОИСК =====
+        if (
+            currentSearch &&
+            !(client.name || "")
+                .toLowerCase()
+                .includes(currentSearch.toLowerCase())
+        ) {
+            return;
+        }
+
         // ===== ФИЛЬТР =====
 
-        // Все
         if (currentClientFilter === "all") {
             // показываем всех
         }
 
-        // Активные
         else if (
             currentClientFilter === "active" &&
             client.status !== "active"
@@ -637,7 +700,6 @@ function renderClients() {
             return;
         }
 
-        // Закрытые
         else if (
             currentClientFilter === "closed" &&
             client.status !== "closed"
@@ -645,7 +707,6 @@ function renderClients() {
             return;
         }
 
-        // Должники
         else if (
             currentClientFilter === "overdue" &&
             client.status !== "overdue"
@@ -695,6 +756,7 @@ function renderClients() {
 // ===============================================
 
 let currentClientFilter = "all";
+let currentSearch = "";
 
 function setClientFilter(filter) {
 
@@ -725,11 +787,11 @@ function openClient(clientId) {
     activeProfileClientId = clientId;
 
     // Обновляем ссылку в браузере
-   window.history.replaceState(
-    {},
-    "",
-    `${window.location.origin}${window.location.pathname}?client=${clientId}`
-);
+    window.history.replaceState(
+        {},
+        "",
+        `${window.location.origin}${window.location.pathname}?client=${clientId}`
+    );
 
     document.getElementById("profName").textContent = client.name;
     document.getElementById("profIin").textContent = client.iin;
@@ -748,22 +810,43 @@ function openClient(clientId) {
 
     // ===== ГРАФИК ПЛАТЕЖЕЙ =====
 
-    const tbody = document.getElementById("paymentScheduleBody");
+   const tbody = document.getElementById("paymentScheduleBody");
 
-    tbody.innerHTML = "";
+    if (tbody && client.schedule) {
 
-    client.schedule.forEach(day => {
+        tbody.innerHTML = "";
 
-        tbody.innerHTML += `
-        <tr>
-            <td>${day.day}</td>
-            <td>${day.date}</td>
-            <td>₸ ${day.amount.toLocaleString()}</td>
-            <td>${day.paid ? "✅ Оплачено" : "⏳ Не оплачено"}</td>
-        </tr>
-        `;
+        client.schedule.forEach(day => {
 
-    });
+            tbody.innerHTML += `
+            <tr>
+                <td>${day.day}</td>
+                <td>${day.date}</td>
+                <td>₸ ${Number(day.amount).toLocaleString()}</td>
+
+                <td>
+                    ${
+                        day.paid
+                            ? `📅 ${day.paymentDate || "-"}`
+                            : "-"
+                    }
+                </td>
+
+                <td>${day.paid ? "✅ Оплачено" : "⏳ Не оплачено"}</td>
+
+                <td>
+                    ${
+                        day.paid
+                            ? `🕒 ${day.paymentTime || "-"}<br>👤 ${day.cashier || "-"}`
+                            : "-"
+                    }
+                </td>
+            </tr>
+            `;
+
+        });
+
+    }
 
     navigateToPage("client-profile");
 
@@ -844,12 +927,11 @@ function showClientProfile(clientId) {
 
     activeProfileClientId = clientId;
 
-    window.history.replaceState(
+  window.history.replaceState(
     {},
     "",
-    "#client=" + clientId
+    `${window.location.origin}${window.location.pathname}?client=${clientId}`
 );
-
     document.getElementById("profName").textContent =
         client.name || "";
 
@@ -953,7 +1035,9 @@ if (client.remaining <= 0) {
 
 function renderClientSchedule(client) {
 
-    const tbody = document.getElementById("profile-schedule-body");
+     console.log("Schedule:", client.schedule);
+
+    const tbody = document.getElementById("paymentScheduleBody");
 
     if (!tbody) return;
 
@@ -962,29 +1046,35 @@ function renderClientSchedule(client) {
     client.schedule.forEach(day => {
 
         tbody.innerHTML += `
-
         <tr>
 
             <td>${day.day}</td>
 
             <td>${day.date}</td>
 
-            <td>₸ ${day.amount.toLocaleString()}</td>
-
-            <td>-</td>
-
-            <td>${day.paid ? "✅ Оплачено" : "⏳ Не оплачено"}</td>
+            <td>₸ ${Number(day.amount).toLocaleString()}</td>
 
             <td>
+                ${
+                    day.paid
+                        ? `📅 ${day.paymentDate || "-"}`
+                        : "-"
+                }
+            </td>
 
-                ${day.paid
-                    ? ""
-                    : `<button onclick="payOneDay()">Оплата</button>`}
+            <td>
+                ${day.paid ? "✅ Оплачено" : "⏳ Не оплачено"}
+            </td>
 
+            <td>
+                ${
+                    day.paid
+                        ? `🕒 ${day.paymentTime || "-"}<br>👤 ${day.cashier || "-"}`
+                        : `<button onclick="payOneDay()">Оплата</button>`
+                }
             </td>
 
         </tr>
-
         `;
 
     });
@@ -1063,19 +1153,32 @@ async function paySeveralDays() {
 
     let paid = 0;
     let total = 0;
+    
+for (const payment of client.schedule) {
 
-    for (const payment of client.schedule) {
+    if (!payment.paid && paid < days) {
 
-        if (!payment.paid && paid < days) {
+        payment.paid = true;
 
-            payment.paid = true;
-            client.remaining -= payment.amount;
-            total += payment.amount;
-            paid++;
+        // Дата оплаты
+        payment.paymentDate = new Date().toLocaleDateString("ru-RU");
 
-        }
+        // Время оплаты
+        payment.paymentTime = new Date().toLocaleTimeString("ru-RU");
+
+        // Кто принял оплату
+        payment.cashier = currentUser;
+
+        // Дата ежедневной кассы (та, которую выбрал кассир)
+        payment.cashDate = cashDate;
+
+        client.remaining -= payment.amount;
+        total += payment.amount;
+        paid++;
 
     }
+
+}
 
   if (client.remaining <= 0) {
 
@@ -1245,11 +1348,13 @@ function renderGeneralReport() {
         // Доход = только проценты
         profit += (totalReturn - amount);
 
-        if (balance > 0) {
+        if (client.status === "active") {
 
             active++;
 
-        } else {
+        }
+
+        if (client.status === "closed") {
 
             closed++;
 
@@ -1280,11 +1385,7 @@ function renderGeneralReport() {
 // ЗАПУСК ПРИЛОЖЕНИЯ
 // ===============================================
 
-loadFromLocalStorage();
 loadDailyCash();
-
-renderClients();
-renderGeneralReport();
 
 document.getElementById("regDate").valueAsDate = new Date();
 document.getElementById("cashPaymentDate").valueAsDate = new Date();
@@ -1450,3 +1551,22 @@ function copyClientLink() {
 }
 
 window.copyClientLink = copyClientLink;
+
+const searchInput = document.getElementById("crm-search-input");
+
+if (searchInput) {
+
+    searchInput.addEventListener("input", function () {
+
+        currentSearch = this.value.trim();
+
+        renderClients();
+
+    });
+
+}
+// ===============================================
+// АВТОЗАПУСК
+// ===============================================
+
+checkSession();
