@@ -611,7 +611,12 @@ async function registerClient() {
         remaining: totalReturn,
         status: "active",
         history: [],
-        schedule: generateSchedule(issueDate, duration, dailyPayment)
+        schedule: generateSchedule(
+    issueDate,
+    duration,
+    dailyPayment,
+    totalReturn
+)
     };
 
     try {
@@ -855,7 +860,7 @@ function openClient(clientId) {
 // СОЗДАНИЕ ГРАФИКА ПЛАТЕЖЕЙ
 // ===============================================
 
-function generateSchedule(issueDate, duration, payment) {
+function generateSchedule(issueDate, duration, payment, totalReturn) {
 
     let schedule = [];
 
@@ -868,10 +873,26 @@ function generateSchedule(issueDate, duration, payment) {
 
     let dayNumber = 1;
 
+    let paidSum = 0;
+
     while (schedule.length < totalDays) {
 
-        // Понедельник пропускаем
         if (currentDate.getDay() !== 1) {
+
+            let amountToday;
+
+            // Последний платеж
+            if (dayNumber === totalDays) {
+
+                amountToday = totalReturn - paidSum;
+
+            } else {
+
+                amountToday = payment;
+
+                paidSum += payment;
+
+            }
 
             schedule.push({
 
@@ -879,7 +900,7 @@ function generateSchedule(issueDate, duration, payment) {
 
                 date: currentDate.toISOString().split("T")[0],
 
-                amount: payment,
+                amount: amountToday,
 
                 paid: false
 
