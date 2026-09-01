@@ -28,7 +28,7 @@ const USERS = {
 
     manager1: {
         login: "janibek",
-        password: "291295",
+        password: "2912956",
         role: "manager",
         fullName: "Аманжолов Жанибек "
     },
@@ -170,6 +170,17 @@ async function fixClientStatuses() {
     alert("✅ Статусы всех клиентов обновлены!");
 
 }
+ 
+ }
+ }
+    } else {
+    } else {
+    } else {
+    } else {
+    } else {
+    } else {
+    } else {
+ 
  
 // ==========================
 // Открыть клиента по ссылке
