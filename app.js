@@ -330,6 +330,8 @@ function handleLogout() {
     localStorage.removeItem("crmUser");
     localStorage.removeItem("crmRole");
     localStorage.removeItem("ainalym_qarzhy_user");
+{
+{
 
     currentUser = "";
     currentRole = "";
@@ -339,6 +341,13 @@ function handleLogout() {
     document.getElementById("auth-block").style.display = "flex";
 
 }
+{
+{
+{
+{
+{
+{
+{
 
 // ===============================================
 // ПРОВЕРКА СЕССИИ
