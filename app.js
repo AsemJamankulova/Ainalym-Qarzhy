@@ -357,17 +357,32 @@ async function checkSession() {
 
 function navigateToPage(pageId) {
 
-    // Проверка прав доступа
-    const currentUser = JSON.parse(localStorage.getItem("ainalym_qarzhy_user"));
+   // 🔒 БЛОКИРОВКА РЕГИСТРАЦИИ ДО ОПЛАТЫ ЛИЦЕНЗИИ
+const CRM_LICENSE_ACTIVE = false;
 
-    if (
-        pageId === "client-reg" &&
-        currentUser &&
-        currentUser.role === "cashier"
-    ) {
-        alert("❌ У вас нет доступа к регистрации клиентов.");
-        return;
-    }
+if (pageId === "client-reg" && !CRM_LICENSE_ACTIVE) {
+    alert(
+        "🔒 Регистрация клиентов заблокирована.\n\n" +
+        "Для продолжения работы необходимо активировать лицензию CRM.\n\n" +
+        "Лицензия на 12 месяцев — 600 000 ₸\n\n" +
+        "Обратитесь к владельцу CRM для активации."
+    );
+    return;
+}
+
+// Проверка прав доступа
+const currentUser = JSON.parse(
+    localStorage.getItem("ainalym_qarzhy_user")
+);
+
+if (
+    pageId === "client-reg" &&
+    currentUser &&
+    currentUser.role === "cashier"
+) {
+    alert("❌ У вас нет доступа к регистрации клиентов.");
+    return;
+}
 
     // Скрываем все страницы
     document.querySelectorAll(".page-section").forEach(page => {
