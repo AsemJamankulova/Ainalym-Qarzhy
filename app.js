@@ -309,7 +309,7 @@ function handleLogout() {
     document.getElementById("crm-main-interface").style.display = "none";
 
     document.getElementById("auth-block").style.display = "flex";
-
+}
 
 // ===============================================
 // ПРОВЕРКА СЕССИИ
