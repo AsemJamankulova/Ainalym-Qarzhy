@@ -595,7 +595,7 @@ function calculateSchedule() {
 
 async function registerClient() {
     // 🔒 БЛОКИРОВКА РЕГИСТРАЦИИ ДО ОПЛАТЫ ЛИЦЕНЗИИ
-const CRM_LICENSE_ACTIVE = false;
+const CRM_LICENSE_ACTIVE = true;
 
 if (!CRM_LICENSE_ACTIVE) {
     alert(
