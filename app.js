@@ -358,7 +358,7 @@ async function checkSession() {
 function navigateToPage(pageId) {
 
    // 🔒 БЛОКИРОВКА РЕГИСТРАЦИИ ДО ОПЛАТЫ ЛИЦЕНЗИИ
-const CRM_LICENSE_ACTIVE = false;
+const CRM_LICENSE_ACTIVE = true;
 
 if (pageId === "client-reg" && !CRM_LICENSE_ACTIVE) {
     alert(
