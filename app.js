@@ -579,6 +579,18 @@ function calculateSchedule() {
 // ===============================================
 
 async function registerClient() {
+    // 🔒 БЛОКИРОВКА РЕГИСТРАЦИИ ДО ОПЛАТЫ ЛИЦЕНЗИИ
+const CRM_LICENSE_ACTIVE = false;
+
+if (!CRM_LICENSE_ACTIVE) {
+    alert(
+        "🔒 Регистрация клиентов заблокирована.\n\n" +
+        "Для продолжения работы необходимо активировать лицензию CRM.\n\n" +
+        "Лицензия на 12 месяцев — 600 000 ₸\n\n" +
+        "Обратитесь к владельцу CRM для активации."
+    );
+    return;
+}
     console.log("Начинаю регистрацию...");
 
     const iin = document.getElementById("regIin").value.trim();
