@@ -302,8 +302,6 @@ function handleLogout() {
     localStorage.removeItem("crmUser");
     localStorage.removeItem("crmRole");
     localStorage.removeItem("ainalym_qarzhy_user");
-{
-{
 
     currentUser = "";
     currentRole = "";
