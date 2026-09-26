@@ -28,7 +28,7 @@ const USERS = {
 
     manager1: {
         login: "janibek",
-        password: "2912956",
+        password: "291295",
         role: "manager",
         fullName: "Аманжолов Жанибек "
     },
