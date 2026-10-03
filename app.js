@@ -1465,8 +1465,13 @@ async function renderGeneralReport() {
         remaining += balance;
         profit += (totalReturn - amount);
 
-        if (client.status === "active") active++;
-        if (client.status === "closed") closed++;
+        // Статус считаем по текущему остатку, чтобы общий итог
+        // всегда отражал актуальное состояние клиента.
+        if (balance > 0) {
+            active++;
+        } else {
+            closed++;
+        }
     });
 
     const settings = await getGeneralReportSettings();
@@ -1487,9 +1492,11 @@ async function renderGeneralReport() {
     document.getElementById("total-active-count").textContent = active;
     document.getElementById("total-closed-count").textContent = closed;
 
+    const adminControls = document.getElementById("general-report-admin-controls");
     const editButton = document.getElementById("general-report-edit-button");
     const modeLabel = document.getElementById("general-report-mode-label");
 
+    if (adminControls) adminControls.style.display = currentRole === "admin" ? "flex" : "none";
     if (editButton) editButton.style.display = currentRole === "admin" ? "inline-flex" : "none";
     if (modeLabel) modeLabel.textContent = settings.manualMode === true ? "Ручной режим" : "Автоматический режим";
 }
