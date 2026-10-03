@@ -1369,64 +1369,136 @@ function renderDailyReport() {
 // ОБЩИЙ ИТОГ
 // ===============================================
 
-function renderGeneralReport() {
+async function getGeneralReportSettings() {
+    try {
+        const snapshot = await getDocs(collection(db, "settings"));
+        const found = snapshot.docs.find(d => d.id === "generalReport");
+        return found ? found.data() : { manualMode: false };
+    } catch (error) {
+        console.error("Не удалось загрузить настройки Общего итога:", error);
+        return { manualMode: false };
+    }
+}
+
+async function saveGeneralReportSettings() {
+    if (currentRole !== "admin") {
+        alert("Редактирование доступно только администратору.");
+        return;
+    }
+
+    const manualMode = document.getElementById("general-report-manual-mode").checked;
+
+    if (!manualMode) {
+        await setDoc(doc(db, "settings", "generalReport"), {
+            manualMode: false
+        });
+        closeGeneralReportEditor();
+        renderGeneralReport();
+        return;
+    }
+
+    const data = {
+        manualMode: true,
+        issued: Number(document.getElementById("manual-total-issued").value || 0),
+        collected: Number(document.getElementById("manual-total-collected").value || 0),
+        profit: Number(document.getElementById("manual-total-profit").value || 0),
+        remaining: Number(document.getElementById("manual-total-remaining").value || 0),
+        active: Number(document.getElementById("manual-total-active").value || 0),
+        closed: Number(document.getElementById("manual-total-closed").value || 0)
+    };
+
+    try {
+        await setDoc(doc(db, "settings", "generalReport"), data);
+        closeGeneralReportEditor();
+        renderGeneralReport();
+    } catch (error) {
+        console.error("Не удалось сохранить Общий итог:", error);
+        alert("Не удалось сохранить изменения. Проверьте подключение к Firebase.");
+    }
+}
+
+async function openGeneralReportEditor() {
+    if (currentRole !== "admin") {
+        alert("Редактирование доступно только администратору.");
+        return;
+    }
+
+    const settings = await getGeneralReportSettings();
+
+    document.getElementById("general-report-manual-mode").checked = settings.manualMode === true;
+    document.getElementById("manual-total-issued").value = settings.issued ?? 0;
+    document.getElementById("manual-total-collected").value = settings.collected ?? 0;
+    document.getElementById("manual-total-profit").value = settings.profit ?? 0;
+    document.getElementById("manual-total-remaining").value = settings.remaining ?? 0;
+    document.getElementById("manual-total-active").value = settings.active ?? 0;
+    document.getElementById("manual-total-closed").value = settings.closed ?? 0;
+
+    toggleGeneralReportManualInputs();
+    document.getElementById("general-report-editor-modal").style.display = "flex";
+}
+
+function closeGeneralReportEditor() {
+    document.getElementById("general-report-editor-modal").style.display = "none";
+}
+
+function toggleGeneralReportManualInputs() {
+    const enabled = document.getElementById("general-report-manual-mode").checked;
+    document.getElementById("general-report-manual-fields").style.display = enabled ? "grid" : "none";
+}
+
+async function renderGeneralReport() {
 
     let issued = 0;
     let collected = 0;
     let remaining = 0;
     let profit = 0;
-
     let active = 0;
     let closed = 0;
 
     clientsDatabase.forEach(client => {
-
         const amount = Number(client.amount || 0);
         const totalReturn = Number(client.totalReturn || 0);
         const balance = Number(client.remaining || 0);
 
         issued += amount;
-
         collected += (totalReturn - balance);
-
         remaining += balance;
-
-        // Доход = только проценты
         profit += (totalReturn - amount);
 
-        if (client.status === "active") {
-
-            active++;
-
-        }
-
-        if (client.status === "closed") {
-
-            closed++;
-
-        }
-
+        if (client.status === "active") active++;
+        if (client.status === "closed") closed++;
     });
 
-    document.getElementById("total-issued").textContent =
-        "₸ " + issued.toLocaleString();
+    const settings = await getGeneralReportSettings();
 
-    document.getElementById("total-collected").textContent =
-        "₸ " + collected.toLocaleString();
+    if (settings.manualMode === true) {
+        issued = Number(settings.issued || 0);
+        collected = Number(settings.collected || 0);
+        profit = Number(settings.profit || 0);
+        remaining = Number(settings.remaining || 0);
+        active = Number(settings.active || 0);
+        closed = Number(settings.closed || 0);
+    }
 
-    document.getElementById("total-profit").textContent =
-        "₸ " + profit.toLocaleString();
+    document.getElementById("total-issued").textContent = "₸ " + issued.toLocaleString();
+    document.getElementById("total-collected").textContent = "₸ " + collected.toLocaleString();
+    document.getElementById("total-profit").textContent = "₸ " + profit.toLocaleString();
+    document.getElementById("total-remaining").textContent = "₸ " + remaining.toLocaleString();
+    document.getElementById("total-active-count").textContent = active;
+    document.getElementById("total-closed-count").textContent = closed;
 
-    document.getElementById("total-remaining").textContent =
-        "₸ " + remaining.toLocaleString();
+    const editButton = document.getElementById("general-report-edit-button");
+    const modeLabel = document.getElementById("general-report-mode-label");
 
-    document.getElementById("total-active-count").textContent =
-        active;
-
-    document.getElementById("total-closed-count").textContent =
-        closed;
-
+    if (editButton) editButton.style.display = currentRole === "admin" ? "inline-flex" : "none";
+    if (modeLabel) modeLabel.textContent = settings.manualMode === true ? "Ручной режим" : "Автоматический режим";
 }
+
+window.openGeneralReportEditor = openGeneralReportEditor;
+window.closeGeneralReportEditor = closeGeneralReportEditor;
+window.toggleGeneralReportManualInputs = toggleGeneralReportManualInputs;
+window.saveGeneralReportSettings = saveGeneralReportSettings;
+
 // ===============================================
 // ЗАПУСК ПРИЛОЖЕНИЯ
 // ===============================================
