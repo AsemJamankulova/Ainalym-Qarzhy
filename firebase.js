@@ -52,3 +52,6 @@ export {
     doc,
     deleteDoc
 };
+
+    deleteDoc
+};
