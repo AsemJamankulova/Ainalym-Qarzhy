@@ -519,7 +519,21 @@
          class="page-section"
          style="display:none;">
 
-    <h2>📈 Общий итог</h2>
+    <div class="general-report-header">
+        <div>
+            <h2>📈 Общий итог</h2>
+            <span id="general-report-mode-label" class="general-report-mode-label">Автоматический режим</span>
+        </div>
+        <button
+            id="general-report-edit-button"
+            class="general-report-edit-button"
+            type="button"
+            onclick="openGeneralReportEditor()"
+            style="display:none;"
+        >
+            ✏️ Изменить итог
+        </button>
+    </div>
 
     <div class="summary-grid">
 
@@ -615,5 +629,41 @@
     </div>
 
 </div>
+
+<!-- =========================
+     РЕДАКТИРОВАНИЕ ОБЩЕГО ИТОГА (ТОЛЬКО ADMIN)
+========================== -->
+<div id="general-report-editor-modal" class="general-report-editor-modal" style="display:none;">
+    <div class="general-report-editor-card">
+        <div class="general-report-editor-title">
+            <h3>✏️ Редактирование «Общего итога»</h3>
+            <button type="button" class="general-report-close" onclick="closeGeneralReportEditor()">×</button>
+        </div>
+
+        <label class="general-report-switch">
+            <input
+                id="general-report-manual-mode"
+                type="checkbox"
+                onchange="toggleGeneralReportManualInputs()"
+            />
+            <span>Использовать введённые мной значения</span>
+        </label>
+
+        <div id="general-report-manual-fields" class="general-report-manual-fields">
+            <label>Выдано<input id="manual-total-issued" type="number" step="1" min="0"></label>
+            <label>Получено<input id="manual-total-collected" type="number" step="1" min="0"></label>
+            <label>Доход<input id="manual-total-profit" type="number" step="1" min="0"></label>
+            <label>Остаток к получению<input id="manual-total-remaining" type="number" step="1" min="0"></label>
+            <label>Активных<input id="manual-total-active" type="number" step="1" min="0"></label>
+            <label>Закрытых<input id="manual-total-closed" type="number" step="1" min="0"></label>
+        </div>
+
+        <div class="general-report-editor-actions">
+            <button type="button" onclick="closeGeneralReportEditor()">Отмена</button>
+            <button type="button" class="primary" onclick="saveGeneralReportSettings()">Сохранить</button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
