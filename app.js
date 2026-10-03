@@ -91,6 +91,17 @@ let activeProfileClientId = null;
 // Ежедневная касса
 let dailyCash = {};
 
+// Настройки общего итога
+let generalReportSettings = {
+    manualMode: false,
+    issued: 0,
+    collected: 0,
+    profit: 0,
+    remaining: 0,
+    active: 0,
+    closed: 0
+};
+
 // -------------------------
 // LocalStorage
 // -------------------------
@@ -272,11 +283,13 @@ async function openCRM() {
     document.getElementById("current-user-display").innerHTML =
         "👤 " + currentUser;
 
-    // Сначала загружаем клиентов
+    // Сначала загружаем клиентов и настройки общего итога
     await loadFromLocalStorage();
+    await loadGeneralReportSettings();
 
     renderClients();
     renderGeneralReport();
+    updateGeneralReportAdminTools();
 
     // Потом открываем клиента по ссылке
     const params = new URLSearchParams(window.location.search);
@@ -1247,6 +1260,10 @@ for (const payment of client.schedule) {
 
     renderClients();
 
+    // Общий итог сразу обновляется после оплаты:
+    // получено увеличивается, остаток уменьшается.
+    renderGeneralReport();
+
     showClientProfile(client.id);
 
     updateMultiPaymentAmount();
@@ -1366,146 +1383,393 @@ function renderDailyReport() {
 
 }
 // ===============================================
-// ОБЩИЙ ИТОГ
+// НАСТРОЙКИ ОБЩЕГО ИТОГА
 // ===============================================
 
-async function getGeneralReportSettings() {
-    try {
-        const snapshot = await getDocs(collection(db, "settings"));
-        const found = snapshot.docs.find(d => d.id === "generalReport");
-        return found ? found.data() : { manualMode: false };
-    } catch (error) {
-        console.error("Не удалось загрузить настройки Общего итога:", error);
-        return { manualMode: false };
-    }
+function isAdminUser() {
+    const savedUser = JSON.parse(
+        localStorage.getItem("ainalym_qarzhy_user") || "null"
+    );
+
+    return currentRole === "admin" ||
+        (savedUser && savedUser.role === "admin");
 }
 
-async function saveGeneralReportSettings() {
-    if (currentRole !== "admin") {
-        alert("Редактирование доступно только администратору.");
-        return;
-    }
+async function loadGeneralReportSettings() {
 
-    const manualMode = document.getElementById("general-report-manual-mode").checked;
-
-    if (!manualMode) {
-        await setDoc(doc(db, "settings", "generalReport"), {
-            manualMode: false
-        });
-        closeGeneralReportEditor();
-        renderGeneralReport();
-        return;
-    }
-
-    const data = {
-        manualMode: true,
-        issued: Number(document.getElementById("manual-total-issued").value || 0),
-        collected: Number(document.getElementById("manual-total-collected").value || 0),
-        profit: Number(document.getElementById("manual-total-profit").value || 0),
-        remaining: Number(document.getElementById("manual-total-remaining").value || 0),
-        active: Number(document.getElementById("manual-total-active").value || 0),
-        closed: Number(document.getElementById("manual-total-closed").value || 0)
+    generalReportSettings = {
+        manualMode: false,
+        issued: 0,
+        collected: 0,
+        profit: 0,
+        remaining: 0,
+        active: 0,
+        closed: 0
     };
 
     try {
-        await setDoc(doc(db, "settings", "generalReport"), data);
-        closeGeneralReportEditor();
-        renderGeneralReport();
+
+        const snapshot = await getDocs(
+            collection(db, "settings")
+        );
+
+        const settingsDoc = snapshot.docs.find(
+            item => item.id === "generalReport"
+        );
+
+        if (settingsDoc) {
+
+            const data = settingsDoc.data();
+
+            // Старые настройки ручного режима не используются.
+            // Новый режим включается только после явного сохранения администратором.
+            if (Number(data.version || 0) === 2) {
+
+                generalReportSettings = {
+                    ...generalReportSettings,
+                    ...data,
+                    manualMode: data.manualMode === true
+                };
+
+            }
+
+        }
+
     } catch (error) {
-        console.error("Не удалось сохранить Общий итог:", error);
-        alert("Не удалось сохранить изменения. Проверьте подключение к Firebase.");
+
+        console.error("Не удалось загрузить настройки общего итога:", error);
+
     }
+
 }
 
-async function openGeneralReportEditor() {
-    if (currentRole !== "admin") {
-        alert("Редактирование доступно только администратору.");
+function updateGeneralReportAdminTools() {
+
+    const tools = document.getElementById("general-report-admin-tools");
+
+    if (!tools) return;
+
+    tools.style.display = isAdminUser() ? "block" : "none";
+
+}
+
+function openGeneralReportEditor() {
+
+    if (!isAdminUser()) {
+
+        alert("❌ Только администратор может менять общий итог.");
+
         return;
+
     }
 
-    const settings = await getGeneralReportSettings();
+    const modal = document.getElementById("general-report-editor");
 
-    document.getElementById("general-report-manual-mode").checked = settings.manualMode === true;
-    document.getElementById("manual-total-issued").value = settings.issued ?? 0;
-    document.getElementById("manual-total-collected").value = settings.collected ?? 0;
-    document.getElementById("manual-total-profit").value = settings.profit ?? 0;
-    document.getElementById("manual-total-remaining").value = settings.remaining ?? 0;
-    document.getElementById("manual-total-active").value = settings.active ?? 0;
-    document.getElementById("manual-total-closed").value = settings.closed ?? 0;
+    if (!modal) return;
+
+    document.getElementById("general-report-manual-mode").checked =
+        generalReportSettings.manualMode === true;
+
+    document.getElementById("manual-total-issued").value =
+        Number(generalReportSettings.issued || 0);
+
+    document.getElementById("manual-total-collected").value =
+        Number(generalReportSettings.collected || 0);
+
+    document.getElementById("manual-total-profit").value =
+        Number(generalReportSettings.profit || 0);
+
+    document.getElementById("manual-total-remaining").value =
+        Number(generalReportSettings.remaining || 0);
+
+    document.getElementById("manual-total-active").value =
+        Number(generalReportSettings.active || 0);
+
+    document.getElementById("manual-total-closed").value =
+        Number(generalReportSettings.closed || 0);
 
     toggleGeneralReportManualInputs();
-    document.getElementById("general-report-editor-modal").style.display = "flex";
+
+    modal.style.display = "flex";
+
 }
 
 function closeGeneralReportEditor() {
-    document.getElementById("general-report-editor-modal").style.display = "none";
+
+    const modal = document.getElementById("general-report-editor");
+
+    if (modal) {
+
+        modal.style.display = "none";
+
+    }
+
 }
 
 function toggleGeneralReportManualInputs() {
-    const enabled = document.getElementById("general-report-manual-mode").checked;
-    document.getElementById("general-report-manual-fields").style.display = enabled ? "grid" : "none";
+
+    const enabled =
+        document.getElementById("general-report-manual-mode")?.checked === true;
+
+    document
+        .querySelectorAll(".manual-report-input")
+        .forEach(input => {
+
+            input.disabled = !enabled;
+
+        });
+
+    const hint = document.getElementById("general-report-auto-hint");
+
+    if (hint) {
+
+        hint.textContent = enabled
+            ? "Ручной режим включён. Значения ниже используются вместо автоматических."
+            : "Автоматический режим включён. Все значения берутся из клиентов и оплат.";
+
+    }
+
 }
 
-async function renderGeneralReport() {
+async function saveGeneralReportSettings() {
+
+    if (!isAdminUser()) {
+
+        alert("❌ Только администратор может менять общий итог.");
+
+        return;
+
+    }
+
+    const manualMode =
+        document.getElementById("general-report-manual-mode").checked;
+
+    const settings = {
+
+        version: 2,
+        manualMode,
+
+        issued: Number(
+            document.getElementById("manual-total-issued").value || 0
+        ),
+
+        collected: Number(
+            document.getElementById("manual-total-collected").value || 0
+        ),
+
+        profit: Number(
+            document.getElementById("manual-total-profit").value || 0
+        ),
+
+        remaining: Number(
+            document.getElementById("manual-total-remaining").value || 0
+        ),
+
+        active: Number(
+            document.getElementById("manual-total-active").value || 0
+        ),
+
+        closed: Number(
+            document.getElementById("manual-total-closed").value || 0
+        )
+
+    };
+
+    try {
+
+        await setDoc(
+            doc(db, "settings", "generalReport"),
+            settings,
+            { merge: true }
+        );
+
+        generalReportSettings = settings;
+
+        closeGeneralReportEditor();
+
+        renderGeneralReport();
+
+        alert(
+            manualMode
+                ? "✅ Ручной режим сохранён."
+                : "✅ Автоматический режим включён."
+        );
+
+    } catch (error) {
+
+        console.error("Ошибка сохранения общего итога:", error);
+
+        alert("Ошибка при сохранении: " + error.message);
+
+    }
+
+}
+
+// ===============================================
+// ОБЩИЙ ИТОГ
+// ===============================================
+
+function renderGeneralReport() {
 
     let issued = 0;
     let collected = 0;
     let remaining = 0;
     let profit = 0;
+
     let active = 0;
     let closed = 0;
 
     clientsDatabase.forEach(client => {
+
+        const amount = Number(client.amount || 0);
+        const totalReturn = Number(client.totalReturn || 0);
+        const balance = Math.max(
+            0,
+            Number(client.remaining ?? totalReturn)
+        );
+
+        issued += amount;
+
+        collected += Math.max(
+            0,
+            totalReturn - balance
+        );
+
+        remaining += balance;
+
+        // Доход = проценты по выданным займам
+        profit += Math.max(
+            0,
+            totalReturn - amount
+        );
+
+        // Статус всегда определяется автоматически по остатку
+        if (balance <= 0) {
+
+            closed++;
+
+        } else {
+
+            active++;
+
+        }
+
+    });
+
+    const values = generalReportSettings.manualMode
+        ? {
+            issued: Number(generalReportSettings.issued || 0),
+            collected: Number(generalReportSettings.collected || 0),
+            profit: Number(generalReportSettings.profit || 0),
+            remaining: Number(generalReportSettings.remaining || 0),
+            active: Number(generalReportSettings.active || 0),
+            closed: Number(generalReportSettings.closed || 0)
+        }
+        : {
+            issued,
+            collected,
+            profit,
+            remaining,
+            active,
+            closed
+        };
+
+    const issuedEl = document.getElementById("total-issued");
+    const collectedEl = document.getElementById("total-collected");
+    const profitEl = document.getElementById("total-profit");
+    const remainingEl = document.getElementById("total-remaining");
+    const activeEl = document.getElementById("total-active-count");
+    const closedEl = document.getElementById("total-closed-count");
+
+    if (issuedEl) {
+        issuedEl.textContent =
+            "₸ " + values.issued.toLocaleString();
+    }
+
+    if (collectedEl) {
+        collectedEl.textContent =
+            "₸ " + values.collected.toLocaleString();
+    }
+
+    if (profitEl) {
+        profitEl.textContent =
+            "₸ " + values.profit.toLocaleString();
+    }
+
+    if (remainingEl) {
+        remainingEl.textContent =
+            "₸ " + values.remaining.toLocaleString();
+    }
+
+    if (activeEl) {
+        activeEl.textContent = values.active;
+    }
+
+    if (closedEl) {
+        closedEl.textContent = values.closed;
+    }
+
+    updateGeneralReportAdminTools();
+
+}
+
+
+    let issued = 0;
+    let collected = 0;
+    let remaining = 0;
+    let profit = 0;
+
+    let active = 0;
+    let closed = 0;
+
+    clientsDatabase.forEach(client => {
+
         const amount = Number(client.amount || 0);
         const totalReturn = Number(client.totalReturn || 0);
         const balance = Number(client.remaining || 0);
 
         issued += amount;
+
         collected += (totalReturn - balance);
+
         remaining += balance;
+
+        // Доход = только проценты
         profit += (totalReturn - amount);
 
-        // Статус считаем по текущему остатку, чтобы общий итог
-        // всегда отражал актуальное состояние клиента.
-        if (balance > 0) {
+        if (client.status === "active") {
+
             active++;
-        } else {
-            closed++;
+
         }
+
+        if (client.status === "closed") {
+
+            closed++;
+
+        }
+
     });
 
-    const settings = await getGeneralReportSettings();
+    document.getElementById("total-issued").textContent =
+        "₸ " + issued.toLocaleString();
 
-    if (settings.manualMode === true) {
-        issued = Number(settings.issued || 0);
-        collected = Number(settings.collected || 0);
-        profit = Number(settings.profit || 0);
-        remaining = Number(settings.remaining || 0);
-        active = Number(settings.active || 0);
-        closed = Number(settings.closed || 0);
-    }
+    document.getElementById("total-collected").textContent =
+        "₸ " + collected.toLocaleString();
 
-    document.getElementById("total-issued").textContent = "₸ " + issued.toLocaleString();
-    document.getElementById("total-collected").textContent = "₸ " + collected.toLocaleString();
-    document.getElementById("total-profit").textContent = "₸ " + profit.toLocaleString();
-    document.getElementById("total-remaining").textContent = "₸ " + remaining.toLocaleString();
-    document.getElementById("total-active-count").textContent = active;
-    document.getElementById("total-closed-count").textContent = closed;
+    document.getElementById("total-profit").textContent =
+        "₸ " + profit.toLocaleString();
 
-    const adminControls = document.getElementById("general-report-admin-controls");
-    const editButton = document.getElementById("general-report-edit-button");
-    const modeLabel = document.getElementById("general-report-mode-label");
+    document.getElementById("total-remaining").textContent =
+        "₸ " + remaining.toLocaleString();
 
-    if (adminControls) adminControls.style.display = currentRole === "admin" ? "flex" : "none";
-    if (editButton) editButton.style.display = currentRole === "admin" ? "inline-flex" : "none";
-    if (modeLabel) modeLabel.textContent = settings.manualMode === true ? "Ручной режим" : "Автоматический режим";
+    document.getElementById("total-active-count").textContent =
+        active;
+
+    document.getElementById("total-closed-count").textContent =
+        closed;
+
 }
-
-window.openGeneralReportEditor = openGeneralReportEditor;
-window.closeGeneralReportEditor = closeGeneralReportEditor;
-window.toggleGeneralReportManualInputs = toggleGeneralReportManualInputs;
-window.saveGeneralReportSettings = saveGeneralReportSettings;
-
 // ===============================================
 // ЗАПУСК ПРИЛОЖЕНИЯ
 // ===============================================
@@ -1514,12 +1778,12 @@ loadDailyCash();
 
 document.getElementById("regDate").valueAsDate = new Date();
 document.getElementById("cashPaymentDate").valueAsDate = new Date();
-function cancelLastPayment() {
+async function cancelLastPayment() {
 
     if (activeProfileClientId == null) return;
 
     const client = clientsDatabase.find(
-        c => c.id === activeProfileClientId
+        c => String(c.id) === String(activeProfileClientId)
     );
 
     if (!client) return;
@@ -1532,15 +1796,36 @@ function cancelLastPayment() {
 
             payment.paid = false;
 
-            client.remaining += payment.amount;
+            client.remaining = Math.max(
+                0,
+                Number(client.remaining || 0) + Number(payment.amount || 0)
+            );
 
-            saveToLocalStorage();
+            client.status = "active";
 
-            refreshClientProfile();
+            try {
 
-            renderGeneralReport();
+                await window.setDoc(
+                    window.doc(window.db, "clients", client.firebaseId),
+                    client,
+                    { merge: true }
+                );
 
-            alert("↩ Последняя оплата отменена.");
+                await loadFromLocalStorage();
+
+                refreshClientProfile();
+                renderClients();
+                renderGeneralReport();
+
+                alert("↩ Последняя оплата отменена.");
+
+            } catch (error) {
+
+                console.error("Ошибка отмены оплаты:", error);
+
+                alert("Ошибка при отмене оплаты: " + error.message);
+
+            }
 
             return;
 
@@ -1651,6 +1936,10 @@ window.toggleSidebar = toggleSidebar;
 window.deleteCurrentClient = window.deleteCurrentClient;
 window.setClientFilter = setClientFilter;
 window.issueRepeatLoan = issueRepeatLoan;
+window.openGeneralReportEditor = openGeneralReportEditor;
+window.closeGeneralReportEditor = closeGeneralReportEditor;
+window.toggleGeneralReportManualInputs = toggleGeneralReportManualInputs;
+window.saveGeneralReportSettings = saveGeneralReportSettings;
 
 // ===============================================
 // КОПИРОВАТЬ ССЫЛКУ НА КЛИЕНТА
