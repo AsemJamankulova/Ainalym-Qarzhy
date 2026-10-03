@@ -519,9 +519,7 @@
          class="page-section"
          style="display:none;">
 
-    <div class="general-report-header">
-        <h2>📈 Общий итог</h2>
-    </div>
+    <h2>📈 Общий итог</h2>
 
     <div class="summary-grid">
 
@@ -618,61 +616,111 @@
 
 </div>
 
-<!-- =========================
-     РУЧНОЙ РЕЖИМ (ТОЛЬКО ADMIN)
-     Показывается в самом низу, после блока «Доступ к CRM»
-========================== -->
-<div
-    id="general-report-admin-controls"
-    class="general-report-admin-controls"
-    style="display:none;"
->
-    <span id="general-report-mode-label" class="general-report-mode-label">Автоматический режим</span>
+<!-- ===============================================
+     УПРАВЛЕНИЕ ОБЩИМ ИТОГОМ — ТОЛЬКО ДЛЯ АДМИНИСТРАТОРА
+================================================ -->
+<div id="general-report-admin-tools"
+     style="
+        display:none;
+        max-width:900px;
+        margin:0 auto 35px;
+        padding:0 22px;
+        box-sizing:border-box;
+     ">
+
     <button
-        id="general-report-edit-button"
-        class="general-report-edit-button"
+        class="primary-btn"
         type="button"
         onclick="openGeneralReportEditor()"
-        style="display:inline-flex;"
-    >
-        ✏️ Изменить итог
+        style="width:100%;">
+
+        ✏️ Ручное изменение общего итога
+
     </button>
+
 </div>
 
-<!-- =========================
-     РЕДАКТИРОВАНИЕ ОБЩЕГО ИТОГА (ТОЛЬКО ADMIN)
-========================== -->
-<div id="general-report-editor-modal" class="general-report-editor-modal" style="display:none;">
-    <div class="general-report-editor-card">
-        <div class="general-report-editor-title">
-            <h3>✏️ Редактирование «Общего итога»</h3>
-            <button type="button" class="general-report-close" onclick="closeGeneralReportEditor()">×</button>
-        </div>
+<!-- ===============================================
+     ОКНО РУЧНОГО РЕЖИМА
+================================================ -->
+<div id="general-report-editor"
+     class="general-report-modal"
+     style="display:none;">
 
-        <label class="general-report-switch">
+    <div class="general-report-modal-card">
+
+        <h3>⚙️ Общий итог</h3>
+
+        <label class="manual-mode-label">
             <input
                 id="general-report-manual-mode"
                 type="checkbox"
-                onchange="toggleGeneralReportManualInputs()"
-            />
-            <span>Использовать введённые мной значения</span>
+                onchange="toggleGeneralReportManualInputs()">
+
+            Включить ручной режим
         </label>
 
-        <div id="general-report-manual-fields" class="general-report-manual-fields">
-            <label>Выдано<input id="manual-total-issued" type="number" step="1" min="0"></label>
-            <label>Получено<input id="manual-total-collected" type="number" step="1" min="0"></label>
-            <label>Доход<input id="manual-total-profit" type="number" step="1" min="0"></label>
-            <label>Остаток к получению<input id="manual-total-remaining" type="number" step="1" min="0"></label>
-            <label>Активных<input id="manual-total-active" type="number" step="1" min="0"></label>
-            <label>Закрытых<input id="manual-total-closed" type="number" step="1" min="0"></label>
+        <div
+            id="general-report-auto-hint"
+            class="general-report-hint">
+
+            Автоматический режим включён. Все значения берутся из клиентов и оплат.
+
         </div>
 
-        <div class="general-report-editor-actions">
-            <button type="button" onclick="closeGeneralReportEditor()">Отмена</button>
-            <button type="button" class="primary" onclick="saveGeneralReportSettings()">Сохранить</button>
+        <div class="form-grid general-report-manual-grid">
+
+            <div>
+                <label>Выдано</label>
+                <input id="manual-total-issued" class="manual-report-input" type="number" min="0">
+            </div>
+
+            <div>
+                <label>Получено</label>
+                <input id="manual-total-collected" class="manual-report-input" type="number" min="0">
+            </div>
+
+            <div>
+                <label>Доход</label>
+                <input id="manual-total-profit" class="manual-report-input" type="number" min="0">
+            </div>
+
+            <div>
+                <label>Остаток к получению</label>
+                <input id="manual-total-remaining" class="manual-report-input" type="number" min="0">
+            </div>
+
+            <div>
+                <label>Активных</label>
+                <input id="manual-total-active" class="manual-report-input" type="number" min="0">
+            </div>
+
+            <div>
+                <label>Закрытых</label>
+                <input id="manual-total-closed" class="manual-report-input" type="number" min="0">
+            </div>
+
         </div>
+
+        <div class="general-report-modal-actions">
+
+            <button class="primary-btn" type="button" onclick="saveGeneralReportSettings()">
+                💾 Сохранить
+            </button>
+
+            <button class="danger-btn" type="button" onclick="closeGeneralReportEditor()">
+                Закрыть
+            </button>
+
+        </div>
+
     </div>
+
 </div>
+
+</body>
+</html>
+
 
 </body>
 </html>
