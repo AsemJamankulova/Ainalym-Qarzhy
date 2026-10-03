@@ -520,19 +520,7 @@
          style="display:none;">
 
     <div class="general-report-header">
-        <div>
-            <h2>📈 Общий итог</h2>
-            <span id="general-report-mode-label" class="general-report-mode-label">Автоматический режим</span>
-        </div>
-        <button
-            id="general-report-edit-button"
-            class="general-report-edit-button"
-            type="button"
-            onclick="openGeneralReportEditor()"
-            style="display:none;"
-        >
-            ✏️ Изменить итог
-        </button>
+        <h2>📈 Общий итог</h2>
     </div>
 
     <div class="summary-grid">
@@ -628,6 +616,27 @@
         Включает доступ к CRM, обновления и техническую поддержку.
     </div>
 
+</div>
+
+<!-- =========================
+     РУЧНОЙ РЕЖИМ (ТОЛЬКО ADMIN)
+     Показывается в самом низу, после блока «Доступ к CRM»
+========================== -->
+<div
+    id="general-report-admin-controls"
+    class="general-report-admin-controls"
+    style="display:none;"
+>
+    <span id="general-report-mode-label" class="general-report-mode-label">Автоматический режим</span>
+    <button
+        id="general-report-edit-button"
+        class="general-report-edit-button"
+        type="button"
+        onclick="openGeneralReportEditor()"
+        style="display:inline-flex;"
+    >
+        ✏️ Изменить итог
+    </button>
 </div>
 
 <!-- =========================
